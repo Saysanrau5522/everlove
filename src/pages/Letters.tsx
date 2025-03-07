@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Eye, Clock, Heart, Search, FilterIcon } from "lucide-react";
+import { Eye, Clock, Heart, Search, FilterIcon, RefreshCw } from "lucide-react";
 import Header from "@/components/Header";
 import LetterBox from "@/components/LetterBox";
 import LetterTemplate from "@/components/LetterTemplate";
@@ -9,9 +9,10 @@ import AICompanion from "@/components/AICompanion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
-// Sample received letters
-const receivedLetters = [
+// Initial sample received letters
+const initialLetters = [
   {
     id: 1,
     sender: "Sarah",
@@ -39,7 +40,53 @@ const Letters = () => {
   const [recipient] = useState("Sarah");
   const [activeTab, setActiveTab] = useState("write");
   const [selectedLetter, setSelectedLetter] = useState<number | null>(null);
-  const [letters] = useState(receivedLetters);
+  const [letters, setLetters] = useState(initialLetters);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  
+  // Filter letters based on search query
+  const filteredLetters = letters.filter(letter => 
+    letter.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    letter.sender.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Function to handle letter refresh
+  const refreshLetters = () => {
+    setIsLoading(true);
+    
+    // Simulate API call with delay
+    setTimeout(() => {
+      setLetters(initialLetters);
+      setIsLoading(false);
+      toast({
+        title: "Inbox Refreshed",
+        description: "Your letters have been updated",
+      });
+    }, 1000);
+  };
+
+  // Function to mark letter as read when opened
+  const handleOpenLetter = (id: number) => {
+    setSelectedLetter(id);
+    setLetters(letters.map(letter => 
+      letter.id === id ? { ...letter, read: true } : letter
+    ));
+  };
+
+  // Handle letter sent event
+  const handleLetterSent = () => {
+    // In a real app, we would refresh the inbox data from the server
+    toast({
+      title: "Letter Delivered",
+      description: "Your letter has been sent successfully!",
+    });
+    
+    // If we're in the inbox tab, refresh the letters
+    if (activeTab === "inbox") {
+      refreshLetters();
+    }
+  };
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -70,7 +117,10 @@ const Letters = () => {
               ].map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSelectedLetter(null);
+                  }}
                   className={`relative px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                     activeTab === tab.id 
                       ? "text-love-dark" 
@@ -105,7 +155,7 @@ const Letters = () => {
             className="min-h-[60vh]"
           >
             {activeTab === "write" ? (
-              <LetterBox recipient={recipient} />
+              <LetterBox recipient={recipient} onLetterSent={handleLetterSent} />
             ) : (
               <div className="max-w-5xl mx-auto">
                 {/* Search and filters */}
@@ -115,59 +165,85 @@ const Letters = () => {
                     <Input
                       placeholder="Search letters..."
                       className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <FilterIcon className="h-4 w-4" />
-                    <span>Filters</span>
-                  </Button>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={refreshLetters}
+                      disabled={isLoading}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                      <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <FilterIcon className="h-4 w-4" />
+                      <span>Filters</span>
+                    </Button>
+                  </div>
                 </div>
                 
                 {/* Letters inbox */}
                 {selectedLetter === null ? (
-                  <div className="space-y-4">
-                    {letters.map((letter) => (
-                      <motion.div
-                        key={letter.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -2 }}
-                        transition={{ duration: 0.3 }}
-                        onClick={() => setSelectedLetter(letter.id)}
-                        className={`p-4 rounded-lg border ${
-                          letter.read ? 'bg-white' : 'bg-parchment-light'
-                        } cursor-pointer hover:shadow-md transition-all duration-300`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-love-light flex items-center justify-center">
-                              <Heart size={18} className="text-love-dark" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{letter.sender}</h3>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Clock className="h-3 w-3 mr-1" />
-                                <span>
-                                  {new Date(letter.date).toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric' 
-                                  })}
-                                </span>
+                  filteredLetters.length > 0 ? (
+                    <div className="space-y-4">
+                      {filteredLetters.map((letter) => (
+                        <motion.div
+                          key={letter.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          whileHover={{ y: -2 }}
+                          transition={{ duration: 0.3 }}
+                          onClick={() => handleOpenLetter(letter.id)}
+                          className={`p-4 rounded-lg border ${
+                            letter.read ? 'bg-white' : 'bg-parchment-light'
+                          } cursor-pointer hover:shadow-md transition-all duration-300`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-love-light flex items-center justify-center">
+                                <Heart size={18} className="text-love-dark" />
+                              </div>
+                              <div>
+                                <h3 className="font-medium">{letter.sender}</h3>
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  <span>
+                                    {new Date(letter.date).toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    })}
+                                  </span>
+                                </div>
                               </div>
                             </div>
+                            
+                            {!letter.read && (
+                              <Badge className="bg-love-medium">New</Badge>
+                            )}
                           </div>
                           
-                          {!letter.read && (
-                            <Badge className="bg-love-medium">New</Badge>
-                          )}
-                        </div>
-                        
-                        <p className="mt-3 text-gray-600 line-clamp-2">
-                          {letter.content}
-                        </p>
-                      </motion.div>
-                    ))}
-                  </div>
+                          <p className="mt-3 text-gray-600 line-clamp-2">
+                            {letter.content}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-4">
+                        <Mail className="h-6 w-6 text-gray-500" />
+                      </div>
+                      <h3 className="text-lg font-medium">No letters found</h3>
+                      <p className="text-gray-500 mt-1">
+                        {searchQuery ? 'Try a different search term' : 'Your inbox is empty'}
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div className="relative">
                     <Button
