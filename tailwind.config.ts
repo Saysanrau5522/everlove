@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				love: {
+					light: '#FFDEE2',
+					medium: '#EFB1C0', 
+					deep: '#D16B86',
+					dark: '#A14E68'
+				},
+				wisdom: {
+					light: '#D3E4FD',
+					dark: '#7E91B3'
+				},
+				parchment: {
+					light: '#FDF6E9',
+					medium: '#F4E8D4'
 				}
 			},
 			borderRadius: {
@@ -70,26 +85,56 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
-				}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' }
+				},
+				'fade-up': {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'scale-in': {
+					'0%': { opacity: '0', transform: 'scale(0.98)' },
+					'100%': { opacity: '1', transform: 'scale(1)' }
+				},
+				'letter-unfold': {
+					'0%': { opacity: '0', transform: 'scale(0.95) translateY(20px)' },
+					'70%': { opacity: '0.9', transform: 'scale(1.01) translateY(-2px)' },
+					'100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
+				},
+                'float': {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-5px)' }
+                }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.8s ease-out forwards',
+				'fade-in-fast': 'fade-in 0.4s ease-out forwards',
+				'fade-up': 'fade-up 0.8s ease-out forwards',
+				'scale-in': 'scale-in 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards',
+				'letter-unfold': 'letter-unfold 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards',
+                'float': 'float 3s ease-in-out infinite'
+			},
+            boxShadow: {
+                'paper': '0 1px 3px rgba(0,0,0,0.05), 0 3px 10px rgba(0,0,0,0.05)',
+                'letter': '0 10px 30px -5px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.05)'
+            },
+            typography: {
+                serif: {
+                    css: {
+                        fontFamily: '"Baskerville", "Garamond", "Times New Roman", serif'
+                    }
+                }
+            }
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
