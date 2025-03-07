@@ -5,46 +5,22 @@ import { Mail, Heart, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
 import LetterTemplate from './LetterTemplate';
 
 interface LetterBoxProps {
   recipient?: string;
-  onLetterSent?: () => void;
 }
 
-const LetterBox = ({ recipient = "Your beloved", onLetterSent }: LetterBoxProps) => {
+const LetterBox = ({ recipient = "Your beloved" }: LetterBoxProps) => {
   const [isWriting, setIsWriting] = useState(false);
   const [letterContent, setLetterContent] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const { toast } = useToast();
   
   const handleSendLetter = () => {
-    if (!letterContent.trim()) return;
-    
-    setIsSending(true);
-    
-    // Simulate sending a letter with a small delay
-    setTimeout(() => {
-      // In a real app, this would send the letter to the API
-      console.log("Sending letter to:", recipient, "Content:", letterContent);
-      
-      // Show success toast
-      toast({
-        title: "Letter Sent",
-        description: `Your letter to ${recipient} has been delivered.`,
-        variant: "default",
-      });
-      
-      setLetterContent("");
-      setIsWriting(false);
-      setIsSending(false);
-      
-      // Call the callback if provided
-      if (onLetterSent) {
-        onLetterSent();
-      }
-    }, 1000);
+    // In a real app, this would send the letter to the API
+    console.log("Sending letter to:", recipient, "Content:", letterContent);
+    setLetterContent("");
+    setIsWriting(false);
+    // Here we'd show a success message
   };
   
   return (
@@ -133,23 +109,11 @@ const LetterBox = ({ recipient = "Your beloved", onLetterSent }: LetterBoxProps)
               <div className="flex justify-end mt-6">
                 <Button
                   onClick={handleSendLetter}
-                  disabled={!letterContent.trim() || isSending}
+                  disabled={!letterContent.trim()}
                   className="bg-love-medium hover:bg-love-deep text-white font-medium px-6 py-2 rounded-full transition-all duration-300 flex items-center gap-2"
                 >
-                  {isSending ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Sending...
-                    </span>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      <span>Send Letter</span>
-                    </>
-                  )}
+                  <Send className="h-4 w-4" />
+                  <span>Send Letter</span>
                 </Button>
               </div>
             </LetterTemplate>
