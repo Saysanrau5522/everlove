@@ -82,14 +82,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Convert the database result to the Profile type, adding relationship_mode if missing
+    // Convert the database result to the Profile type, making sure we handle relationship_mode
     setProfile({
       id: data.id,
       username: data.username,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       bio: data.bio,
-      relationship_mode: data.relationship_mode || null,
+      relationship_mode: data.relationship_mode as 'solo' | 'together' | null || null,
     });
   };
 
