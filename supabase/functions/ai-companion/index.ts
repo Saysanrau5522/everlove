@@ -14,13 +14,19 @@ serve(async (req) => {
   }
 
   try {
+    console.log('AI companion function called')
     const { messages } = await req.json()
     
     if (!messages || !Array.isArray(messages)) {
       throw new Error('Invalid messages format')
     }
 
-    const hf = new HfInference(Deno.env.get('HUGGING_FACE_ACCESS_TOKEN'))
+    const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN')
+    if (!hfToken) {
+      throw new Error('HUGGING_FACE_ACCESS_TOKEN is not set')
+    }
+
+    const hf = new HfInference(hfToken)
     
     // Convert chat format to a text prompt
     let prompt = "You are a helpful relationship and love advisor. Respond thoughtfully to the following message:\n\n"
@@ -32,6 +38,8 @@ serve(async (req) => {
     } else {
       prompt = "Hello! I'm your relationship companion. How can I help you today with your love journey?"
     }
+
+    console.log('Sending request to Hugging Face with prompt:', prompt.slice(0, 100) + '...')
 
     // Use a text generation model from Hugging Face
     const response = await hf.textGeneration({
@@ -45,6 +53,8 @@ serve(async (req) => {
       }
     })
 
+    console.log('Received response from Hugging Face')
+
     return new Response(
       JSON.stringify({ 
         response: response.generated_text 
@@ -52,9 +62,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('AI Companion Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

@@ -49,12 +49,19 @@ const AICompanion = () => {
         body: { messages: [...messages, userMessage] }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+      
+      if (!data || !data.response) {
+        throw new Error('Invalid response from AI service');
+      }
       
       // Add AI response
       setMessages(prev => [...prev, {
         type: 'ai', 
-        content: data.response || "I'm having trouble connecting right now. Please try again later."
+        content: data.response
       }]);
     } catch (error) {
       console.error('AI Companion error:', error);
