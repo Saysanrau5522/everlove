@@ -82,7 +82,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    setProfile(data as Profile);
+    // Convert the database result to the Profile type, adding relationship_mode if missing
+    setProfile({
+      id: data.id,
+      username: data.username,
+      full_name: data.full_name,
+      avatar_url: data.avatar_url,
+      bio: data.bio,
+      relationship_mode: data.relationship_mode || null,
+    });
   };
 
   const signIn = async (email: string, password: string) => {
