@@ -1,10 +1,22 @@
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, X, ChevronRight, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, X, ChevronRight, BookOpen, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+// Add relationship advice topics for quick access
+const ADVICE_TOPICS = [
+  "Communication skills",
+  "Building trust",
+  "Love languages",
+  "Handling conflict",
+  "Long distance tips",
+  "Self-love practices"
+];
 
 const AICompanion = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,28 +24,58 @@ const AICompanion = () => {
     {type: 'ai', content: 'Hello! I\'m your relationship companion. How can I help you today with your love journey?'}
   ]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Auto scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+  
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
     
     // Add user message
-    setMessages([...messages, {type: 'user', content: input}]);
+    const userMessage = {type: 'user' as const, content: input};
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
     
-    // Simulate AI response (in a real app, this would call an API)
-    setTimeout(() => {
-      let response = '';
-      if (input.toLowerCase().includes('advice')) {
-        response = 'Communication is key in any relationship. Try setting aside dedicated time each week to talk openly about your feelings and needs.';
-      } else if (input.toLowerCase().includes('love language')) {
-        response = 'The five love languages are: Words of Affirmation, Quality Time, Receiving Gifts, Acts of Service, and Physical Touch. Understanding your partner\'s primary love language can strengthen your connection.';
-      } else {
-        response = 'That\'s an interesting point. Remember that authentic love is built on trust, respect, and open communication. Would you like advice on a specific aspect of your relationship?';
-      }
+    try {
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-companion', {
+        body: { messages: [...messages, userMessage] }
+      });
       
-      setMessages(prev => [...prev, {type: 'ai', content: response}]);
-    }, 1000);
+      if (error) throw error;
+      
+      // Add AI response
+      setMessages(prev => [...prev, {
+        type: 'ai', 
+        content: data.response || "I'm having trouble connecting right now. Please try again later."
+      }]);
+    } catch (error) {
+      console.error('AI Companion error:', error);
+      toast({
+        title: "Connection issue",
+        description: "Couldn't connect to AI companion. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Add fallback response
+      setMessages(prev => [...prev, {
+        type: 'ai', 
+        content: "I'm having trouble connecting right now. Please try again later."
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleQuickTopic = (topic: string) => {
+    setInput(`Can you give me advice about ${topic.toLowerCase()}?`);
   };
   
   return (
@@ -50,9 +92,12 @@ const AICompanion = () => {
           >
             <Button
               onClick={() => setIsOpen(true)}
-              className="w-12 h-12 rounded-full bg-love-medium hover:bg-love-deep shadow-md flex items-center justify-center p-0"
+              className="w-12 h-12 rounded-full bg-love-medium hover:bg-love-deep shadow-md flex items-center justify-center p-0 group"
             >
               <MessageCircle className="text-white h-6 w-6" />
+              <span className="absolute right-full mr-2 px-2 py-1 bg-white rounded-lg text-xs font-medium text-love-deep shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                Love Advisor
+              </span>
             </Button>
           </motion.div>
         )}
@@ -80,7 +125,10 @@ const AICompanion = () => {
                       transition={{ duration: 2, repeat: Infinity }}
                     />
                   </div>
-                  <h3 className="font-medium">Relationship Guide</h3>
+                  <h3 className="font-medium flex items-center gap-1">
+                    Relationship Guide
+                    <Sparkles className="h-3 w-3 text-love-medium" />
+                  </h3>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -113,6 +161,22 @@ const AICompanion = () => {
                     </motion.div>
                   </div>
                 ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="bg-gray-100 text-gray-800 max-w-[80%] p-3 rounded-2xl rounded-tl-none"
+                    >
+                      <div className="flex space-x-2">
+                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
               
               {/* Input */}
@@ -120,17 +184,42 @@ const AICompanion = () => {
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <Input
                     type="text"
-                    placeholder="Ask for advice..."
+                    placeholder={isLoading ? "AI is thinking..." : "Ask for advice..."}
                     className="flex-1"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    disabled={isLoading}
                   />
-                  <Button type="submit" className="bg-love-medium hover:bg-love-deep">
+                  <Button 
+                    type="submit" 
+                    className="bg-love-medium hover:bg-love-deep"
+                    disabled={isLoading || !input.trim()}
+                  >
                     <ChevronRight className="h-5 w-5" />
                   </Button>
                 </form>
-                <div className="mt-2 flex items-center justify-center">
-                  <Button variant="ghost" size="sm" className="text-xs text-gray-500 gap-1">
+                
+                {/* Quick topic buttons */}
+                <div className="mt-3 flex flex-wrap gap-2 justify-center">
+                  {ADVICE_TOPICS.slice(0, 3).map(topic => (
+                    <Button 
+                      key={topic} 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleQuickTopic(topic)}
+                      className="text-xs border-love-light hover:bg-love-light/20 text-gray-700"
+                      disabled={isLoading}
+                    >
+                      {topic}
+                    </Button>
+                  ))}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs text-gray-500 gap-1"
+                    onClick={() => setIsOpen(prev => !prev)}
+                    disabled={isLoading}
+                  >
                     <BookOpen className="h-3 w-3" />
                     <span>Love Library</span>
                   </Button>

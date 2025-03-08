@@ -1,11 +1,12 @@
 
 import { motion } from "framer-motion";
-import { Heart, ArrowDown, Mail, MessageSquare, Award } from "lucide-react";
+import { Heart, ArrowDown, Mail, MessageSquare, Award, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import AICompanion from "@/components/AICompanion";
 import PhilosophyFeed from "@/components/PhilosophyFeed";
+import AIPoweredFeatures from "@/components/AIPoweredFeatures";
 
 const Index = () => {
   return (
@@ -31,8 +32,9 @@ const Index = () => {
               transition={{ duration: 0.7 }}
               className="space-y-3"
             >
-              <div className="inline-block px-4 py-1.5 bg-love-light/50 rounded-full text-love-dark text-sm font-medium mb-4">
-                Rediscover authentic connection
+              <div className="inline-flex px-4 py-1.5 bg-love-light/50 rounded-full text-love-dark text-sm font-medium mb-4 items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>AI-Powered connection</span>
               </div>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-gray-900 leading-tight">
                 Love letters in a<br />
@@ -40,7 +42,7 @@ const Index = () => {
               </h1>
               <p className="mt-6 text-xl text-gray-600 max-w-2xl mx-auto">
                 Experience a social platform that celebrates intentional communication, 
-                deeper connections, and the timeless art of love.
+                deeper connections, and the timeless art of love with AI-powered insights.
               </p>
             </motion.div>
             
@@ -129,6 +131,9 @@ const Index = () => {
             </div>
           </div>
         </section>
+        
+        {/* AI-Powered Features section */}
+        <AIPoweredFeatures />
         
         {/* Philosophy feed section */}
         <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-50">
