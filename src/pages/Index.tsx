@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import PhilosophyFeed from "@/components/PhilosophyFeed";
 import AIChatLayout from "@/components/AIChatLayout";
+import SongReels from "@/components/SongReels";
 
 const Index = () => {
   return (
@@ -15,6 +16,13 @@ const Index = () => {
       
       {/* Main content */}
       <main className="pt-24 pb-20">
+        {/* Song Reels section */}
+        <section className="py-10 px-4 bg-gradient-to-r from-pink-50/50 to-blue-50/50">
+          <div className="max-w-6xl mx-auto">
+            <SongReels />
+          </div>
+        </section>
+        
         {/* Library Feed section */}
         <section className="py-10 px-4">
           <div className="max-w-6xl mx-auto">

@@ -36,7 +36,6 @@ const receivedLetters = [
 ];
 
 const Letters = () => {
-  const [recipient] = useState("Sarah");
   const [activeTab, setActiveTab] = useState("write");
   const [selectedLetter, setSelectedLetter] = useState<number | null>(null);
   const [letters] = useState(receivedLetters);
@@ -105,7 +104,7 @@ const Letters = () => {
             className="min-h-[60vh]"
           >
             {activeTab === "write" ? (
-              <LetterBox recipient={recipient} />
+              <LetterBox />
             ) : (
               <div className="max-w-5xl mx-auto">
                 {/* Search and filters */}

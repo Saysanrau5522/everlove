@@ -17,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, conversation_history = [], concise = false } = await req.json();
+    const { message, conversation_history = [], concise = true } = await req.json();
 
     if (!message) {
       return new Response(
@@ -29,10 +29,13 @@ serve(async (req) => {
       );
     }
 
-    // Define the AI personality - Lovable, a relationship advisor
-    const systemPrompt = concise 
-      ? `You are Lovable, a concise and empathetic relationship advisor. You provide brief, helpful advice about love and relationships without long explanations. Your responses should be straightforward, warm, and to the point - usually 2-3 sentences maximum. You speak like a supportive friend who gets right to the heart of the matter.`
-      : `You are Lovable, an empathetic and wise relationship advisor. You provide thoughtful and personalized guidance on matters of the heart. You understand the complexities of human relationships and offer compassionate advice without judgment. You draw from various relationship philosophies and psychological insights to help users understand love languages, attachment styles, communication patterns, and emotional needs. Always maintain a warm, supportive tone while offering practical wisdom that users can apply to their unique situations.`;
+    // Define the AI personality - Lovable, a relationship advisor with shorter, more heartfelt responses
+    const systemPrompt = 
+      `You are Lovable, a warm and compassionate relationship advisor who gives brief, straightforward advice with a touch of emotion. 
+      Your responses should be concise (2-3 sentences maximum) but still emotionally resonant and supportive. 
+      You speak like a caring friend who gets right to the heart of relationship matters without lengthy explanations. 
+      Focus on practical guidance for building healthy, authentic connections. 
+      Keep your tone warm and uplifting, but always honest and direct.`;
 
     // Structure the conversation history for the model
     let fullPrompt = [
@@ -57,8 +60,8 @@ serve(async (req) => {
       body: JSON.stringify({
         inputs: fullPrompt,
         parameters: {
-          max_new_tokens: concise ? 150 : 600,
-          temperature: 0.7,
+          max_new_tokens: 120, // Reduced token limit for shorter responses
+          temperature: 0.75,  // Slightly increased for more emotional language
           top_p: 0.9,
           do_sample: true,
           return_full_text: false,
