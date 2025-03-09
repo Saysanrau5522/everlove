@@ -1,149 +1,38 @@
 
 import { motion } from "framer-motion";
-import { Heart, ArrowDown, Mail, MessageSquare, Award, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Heart, Mail, MessageSquare, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
-import AICompanion from "@/components/AICompanion";
 import PhilosophyFeed from "@/components/PhilosophyFeed";
-import AIPoweredFeatures from "@/components/AIPoweredFeatures";
+import CommunityForum from "@/components/CommunityForum";
+import AIChatLayout from "@/components/AIChatLayout";
 
 const Index = () => {
   return (
     <div className="min-h-screen relative overflow-hidden">
       <Header />
+      <AIChatLayout />
       
       {/* Main content */}
       <main className="pt-24 pb-20">
-        {/* Hero section */}
-        <section className="min-h-[85vh] relative flex flex-col items-center justify-center px-4 overflow-hidden">
-          {/* Background elements */}
-          <div className="absolute inset-0 -z-10 overflow-hidden">
-            <div className="absolute top-1/3 -left-24 w-64 h-64 bg-love-light/30 rounded-full blur-3xl" />
-            <div className="absolute top-1/4 -right-32 w-80 h-80 bg-wisdom-light/40 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-1/4 w-96 h-40 bg-love-light/20 rounded-full blur-3xl" />
-          </div>
-          
-          {/* Hero content */}
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="space-y-3"
-            >
-              <div className="inline-flex px-4 py-1.5 bg-love-light/50 rounded-full text-love-dark text-sm font-medium mb-4 items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>AI-Powered connection</span>
-              </div>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-gray-900 leading-tight">
-                Love letters in a<br />
-                <span className="text-love-dark">digital age</span>
-              </h1>
-              <p className="mt-6 text-xl text-gray-600 max-w-2xl mx-auto">
-                Experience a social platform that celebrates intentional communication, 
-                deeper connections, and the timeless art of love with AI-powered insights.
-              </p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center pt-6"
-            >
-              <Link to="/letters">
-                <Button className="bg-love-medium hover:bg-love-deep text-white px-8 py-6 h-auto rounded-full text-lg flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-300">
-                  <Heart className="w-5 h-5" />
-                  <span>Start Writing Letters</span>
-                </Button>
-              </Link>
-              <Link to="/community">
-                <Button variant="outline" className="border-love-medium/50 text-love-dark px-8 py-6 h-auto rounded-full text-lg hover:bg-love-light/20 transition-all duration-300">
-                  <span>Join Community</span>
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
-          
-          {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 1 }}
-            className="absolute bottom-12 left-1/2 transform -translate-x-1/2"
-          >
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <ArrowDown className="h-6 w-6 text-gray-400" />
-            </motion.div>
-          </motion.div>
-        </section>
-        
-        {/* Features section */}
-        <section className="py-20 px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-serif mb-6">
-                Redefining how we express love
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Everlove combines the nostalgia of handwritten letters with modern 
-                technology to create meaningful connections.
-              </p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-10">
-              {[
-                {
-                  icon: <Mail className="h-8 w-8 text-love-dark" />,
-                  title: "Thoughtful Letters",
-                  description: "Exchange meaningful letters with your beloved, carefully crafted to express your deepest feelings."
-                },
-                {
-                  icon: <Award className="h-8 w-8 text-love-dark" />,
-                  title: "Relationship Growth",
-                  description: "Engage in activities and reflections that strengthen your bond and deepen your understanding."
-                },
-                {
-                  icon: <MessageSquare className="h-8 w-8 text-love-dark" />,
-                  title: "Supportive Community",
-                  description: "Connect with others on the same journey, sharing wisdom and experiences about authentic love."
-                }
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-xl p-8 border border-gray-100 shadow-paper hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="w-14 h-14 rounded-full bg-love-light/30 flex items-center justify-center mb-6">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-medium mb-3">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-        
-        {/* AI-Powered Features section */}
-        <AIPoweredFeatures />
-        
-        {/* Philosophy feed section */}
-        <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-50">
+        {/* Library Feed section */}
+        <section className="py-10 px-4">
           <div className="max-w-6xl mx-auto">
             <PhilosophyFeed />
           </div>
         </section>
         
+        {/* Community Forum section */}
+        <section className="py-10 px-4 bg-gradient-to-b from-white to-gray-50">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-2xl font-serif mb-8">Community Discussions</h2>
+            <CommunityForum />
+          </div>
+        </section>
+        
         {/* CTA section */}
-        <section className="py-20 px-4 relative overflow-hidden">
+        <section className="py-16 px-4 relative overflow-hidden">
           <div className="absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute top-1/3 left-1/3 w-96 h-96 bg-love-light/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-wisdom-light/30 rounded-full blur-3xl" />
@@ -154,19 +43,24 @@ const Index = () => {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              <h2 className="text-3xl md:text-4xl font-serif">
+              <h2 className="text-3xl font-serif">
                 Begin your journey to authentic love
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Whether you're in a relationship or seeking to understand love more deeply, 
                 Everlove provides the space for genuine connection.
               </p>
-              <div className="pt-4">
+              <div className="pt-4 flex flex-wrap gap-4 justify-center">
+                <Link to="/auth">
+                  <Button className="bg-love-medium hover:bg-love-deep text-white px-6 py-2 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
+                    Sign Up
+                  </Button>
+                </Link>
                 <Link to="/letters">
-                  <Button className="bg-love-medium hover:bg-love-deep text-white px-8 py-6 h-auto rounded-full text-lg shadow-md hover:shadow-lg transition-all duration-300">
-                    Start Now
+                  <Button variant="outline" className="border-love-medium/30 text-love-dark px-6 py-2 rounded-full hover:bg-love-light/20">
+                    Start Writing
                   </Button>
                 </Link>
               </div>
@@ -206,9 +100,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-      
-      {/* AI Companion */}
-      <AICompanion />
     </div>
   );
 };
