@@ -3,9 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Pages
 import Index from "./pages/Index";
@@ -31,43 +32,72 @@ const queryClient = new QueryClient({
   },
 });
 
+// Protected route component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <AnimatedTransition />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  return (
+    <AnimatePresence mode="wait">
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route 
+          path="/letters" 
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<AnimatedTransition />}>
+                <Letters />
+              </Suspense>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/community" 
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<AnimatedTransition />}>
+                <Community />
+              </Suspense>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<AnimatedTransition />}>
+                <Profile />
+              </Suspense>
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route 
-              path="/letters" 
-              element={
-                <Suspense fallback={<AnimatedTransition />}>
-                  <Letters />
-                </Suspense>
-              } 
-            />
-            <Route 
-              path="/community" 
-              element={
-                <Suspense fallback={<AnimatedTransition />}>
-                  <Community />
-                </Suspense>
-              } 
-            />
-            <Route 
-              path="/profile" 
-              element={
-                <Suspense fallback={<AnimatedTransition />}>
-                  <Profile />
-                </Suspense>
-              } 
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AnimatePresence>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

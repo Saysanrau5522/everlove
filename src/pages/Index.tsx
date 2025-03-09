@@ -1,11 +1,10 @@
 
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Heart, Mail, MessageSquare, Award } from "lucide-react";
+import { Heart, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import PhilosophyFeed from "@/components/PhilosophyFeed";
-import CommunityForum from "@/components/CommunityForum";
 import AIChatLayout from "@/components/AIChatLayout";
 
 const Index = () => {
@@ -20,14 +19,6 @@ const Index = () => {
         <section className="py-10 px-4">
           <div className="max-w-6xl mx-auto">
             <PhilosophyFeed />
-          </div>
-        </section>
-        
-        {/* Community Forum section */}
-        <section className="py-10 px-4 bg-gradient-to-b from-white to-gray-50">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-2xl font-serif mb-8">Community Discussions</h2>
-            <CommunityForum />
           </div>
         </section>
         

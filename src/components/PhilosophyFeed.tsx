@@ -1,363 +1,248 @@
 
-import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Heart, BookmarkPlus, MessageCircle, Share2, BookOpen, Search, Quote, Music, Filter, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { motion } from "framer-motion";
+import { Book, Music, Quote, Heart, Bookmark, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
 
-// Sample philosophy quotes
+// Sample content for the library
 const quotes = [
   {
     id: 1,
-    quote: "Love is not about possession. It's about appreciation.",
-    author: "Osho",
-    type: "philosophy",
+    text: "Love is composed of a single soul inhabiting two bodies.",
+    author: "Aristotle",
+    category: "Philosophy",
     likes: 342,
-    comments: 18,
-    timestamp: "2h ago",
-    authorImage: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80",
-    imageUrl: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    source: "The Art of Living and Loving"
   },
   {
     id: 2,
-    quote: "The greatest happiness of life is the conviction that we are loved; loved for ourselves, or rather, loved in spite of ourselves.",
-    author: "Victor Hugo",
-    type: "classic",
-    likes: 278,
-    comments: 24,
-    timestamp: "5h ago",
-    authorImage: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80",
-    imageUrl: "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    source: "Les Misérables"
+    text: "The best thing to hold onto in life is each other.",
+    author: "Audrey Hepburn",
+    category: "Wisdom",
+    likes: 289,
   },
   {
     id: 3,
-    quote: "Love is a choice you make from moment to moment.",
-    author: "Barbara De Angelis",
-    type: "advice",
-    likes: 195,
-    comments: 11,
-    timestamp: "1d ago",
-    authorImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80",
-    imageUrl: "https://images.unsplash.com/photo-1494774157365-9e04c6720e47?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    source: "Real Moments"
-  }
+    text: "Being deeply loved by someone gives you strength, while loving someone deeply gives you courage.",
+    author: "Lao Tzu",
+    category: "Philosophy",
+    likes: 412,
+  },
+  {
+    id: 4,
+    text: "Love isn't something you find. Love is something that finds you.",
+    author: "Loretta Young",
+    category: "Wisdom",
+    likes: 256,
+  },
 ];
 
-// Sample books
 const books = [
   {
     id: 1,
     title: "The 5 Love Languages",
     author: "Gary Chapman",
-    cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
     description: "How to express heartfelt commitment to your mate.",
-    tags: ["Relationship", "Communication"],
-    likes: 423
+    coverUrl: "https://m.media-amazon.com/images/I/71JL+1vv0uL._AC_UF1000,1000_QL80_.jpg",
+    category: "Relationships",
+    rating: 4.8,
   },
   {
     id: 2,
-    title: "Attached",
-    author: "Amir Levine & Rachel Heller",
-    cover: "https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    description: "The science of adult attachment and how it can help you find and keep love.",
-    tags: ["Psychology", "Attachment"],
-    likes: 387
+    title: "All About Love",
+    author: "bell hooks",
+    description: "New visions on the nature of love and what it means to be fully alive.",
+    coverUrl: "https://m.media-amazon.com/images/I/71bXMIwxy5L._AC_UF1000,1000_QL80_.jpg",
+    category: "Philosophy",
+    rating: 4.7,
   },
   {
     id: 3,
-    title: "All About Love",
-    author: "bell hooks",
-    cover: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    description: "New visions on the meaning of love in today's world.",
-    tags: ["Cultural", "Philosophy"],
-    likes: 312
-  }
+    title: "Attached",
+    author: "Amir Levine & Rachel Heller",
+    description: "The science of adult attachment and how it can help you find and keep love.",
+    coverUrl: "https://m.media-amazon.com/images/I/41+BlKVyFvL._AC_UF1000,1000_QL80_.jpg",
+    category: "Psychology",
+    rating: 4.6,
+  },
 ];
 
-// Sample songs
 const songs = [
   {
     id: 1,
-    title: "Can't Help Falling in Love",
-    artist: "Elvis Presley",
-    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    year: "1961",
-    tags: ["Classic", "Romantic"],
-    likes: 512
+    title: "All of Me",
+    artist: "John Legend",
+    album: "Love in the Future",
+    duration: "4:30",
+    coverUrl: "https://upload.wikimedia.org/wikipedia/en/b/b5/John_Legend_-_Love_in_the_Future.png",
+    genre: "R&B/Soul",
   },
   {
     id: 2,
     title: "At Last",
     artist: "Etta James",
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    year: "1960",
-    tags: ["Jazz", "Soul"],
-    likes: 478
+    album: "At Last!",
+    duration: "3:02",
+    coverUrl: "https://upload.wikimedia.org/wikipedia/en/3/35/At_Last%21_%28Etta_James_album%29.jpg",
+    genre: "Blues",
   },
   {
     id: 3,
-    title: "Thinking Out Loud",
-    artist: "Ed Sheeran",
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    year: "2014",
-    tags: ["Pop", "Contemporary"],
-    likes: 423
-  }
+    title: "Make You Feel My Love",
+    artist: "Adele",
+    album: "19",
+    duration: "3:32",
+    coverUrl: "https://upload.wikimedia.org/wikipedia/en/1/1d/Adele_-_19.png",
+    genre: "Soul",
+  },
 ];
 
 const PhilosophyFeed = () => {
-  const [likedPosts, setLikedPosts] = useState<number[]>([]);
-  const [savedPosts, setSavedPosts] = useState<number[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('quotes');
-  
-  const handleLike = (id: number) => {
-    if (likedPosts.includes(id)) {
-      setLikedPosts(likedPosts.filter(postId => postId !== id));
+  const [activeTab, setActiveTab] = useState("quotes");
+  const [savedItems, setSavedItems] = useState<number[]>([]);
+
+  const toggleSave = (id: number) => {
+    if (savedItems.includes(id)) {
+      setSavedItems(savedItems.filter(itemId => itemId !== id));
     } else {
-      setLikedPosts([...likedPosts, id]);
+      setSavedItems([...savedItems, id]);
     }
   };
-  
-  const handleSave = (id: number) => {
-    if (savedPosts.includes(id)) {
-      setSavedPosts(savedPosts.filter(postId => postId !== id));
-    } else {
-      setSavedPosts([...savedPosts, id]);
-    }
-  };
-  
+
   return (
-    <div className="space-y-6 mb-20 mx-auto">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-serif">Wisdom & Reflections</h2>
-        <Badge className="bg-love-light text-love-dark px-3 py-1 flex items-center gap-1">
-          <BookOpen className="h-3 w-3" />
-          <span>Library</span>
-        </Badge>
-      </div>
-      
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Search the library..." 
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          <span>Filters</span>
-        </Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-serif">Wisdom Library</h2>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full mb-6">
-          <TabsTrigger value="quotes" className="flex items-center gap-1">
-            <Quote className="h-4 w-4" />
-            <span>Quotes</span>
+        <TabsList className="w-full max-w-md mx-auto grid grid-cols-3">
+          <TabsTrigger value="quotes" className="flex items-center">
+            <Quote size={16} className="mr-2" />
+            Quotes
           </TabsTrigger>
-          <TabsTrigger value="books" className="flex items-center gap-1">
-            <BookOpen className="h-4 w-4" />
-            <span>Books</span>
+          <TabsTrigger value="books" className="flex items-center">
+            <Book size={16} className="mr-2" />
+            Books
           </TabsTrigger>
-          <TabsTrigger value="songs" className="flex items-center gap-1">
-            <Music className="h-4 w-4" />
-            <span>Songs</span>
+          <TabsTrigger value="songs" className="flex items-center">
+            <Music size={16} className="mr-2" />
+            Songs
           </TabsTrigger>
         </TabsList>
         
-        {/* Quotes Tab */}
-        <TabsContent value="quotes" className="space-y-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quotes.map((post, index) => (
+        <TabsContent value="quotes" className="mt-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {quotes.map((quote) => (
               <motion.div
-                key={post.id}
+                key={quote.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.3 }}
               >
-                <Card className="overflow-hidden border border-gray-100 bg-white h-full flex flex-col">
-                  {/* Quote image with overlay */}
-                  <div className="relative aspect-square bg-gray-100">
-                    <img 
-                      src={post.imageUrl} 
-                      alt={post.quote} 
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <div className="p-6 md:p-8 text-center">
-                        <p className="text-white font-serif text-lg md:text-xl italic leading-relaxed drop-shadow-md">
-                          "{post.quote}"
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Quote details */}
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-3">
+                <Card className="h-full">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start">
+                      <Quote className="text-wisdom-medium mr-2 mt-1 h-4 w-4 flex-shrink-0" />
                       <div>
-                        <p className="font-medium">{post.author}</p>
-                        <p className="text-sm text-gray-500">{post.source}</p>
+                        <p className="text-lg italic mb-2">{quote.text}</p>
+                        <p className="text-sm text-gray-600">— {quote.author}</p>
                       </div>
-                      <Badge variant="outline" className="text-xs font-normal">
-                        #{post.type}
-                      </Badge>
                     </div>
-                    
-                    <div className="mt-auto pt-4 border-t flex justify-between items-center">
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => handleLike(post.id)}
-                        >
-                          <Heart 
-                            className={`h-5 w-5 ${likedPosts.includes(post.id) ? 'text-love-deep fill-love-deep' : 'text-gray-700'}`} 
-                          />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Share2 className="h-5 w-5 text-gray-700" />
-                        </Button>
-                      </div>
-                      
+                  </CardContent>
+                  <CardFooter className="pt-2 flex justify-between">
+                    <span className="text-xs text-gray-500">{quote.category}</span>
+                    <div className="flex space-x-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Heart className="h-4 w-4 text-love-medium" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8" 
-                        onClick={() => handleSave(post.id)}
+                        className="h-8 w-8"
+                        onClick={() => toggleSave(quote.id)}
                       >
-                        <BookmarkPlus 
-                          className={`h-5 w-5 ${savedPosts.includes(post.id) ? 'text-love-dark fill-love-dark' : 'text-gray-700'}`} 
+                        <Bookmark 
+                          className={`h-4 w-4 ${savedItems.includes(quote.id) ? 'text-wisdom-medium fill-wisdom-medium' : 'text-gray-500'}`} 
                         />
                       </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Share2 className="h-4 w-4 text-gray-500" />
+                      </Button>
                     </div>
-                  </div>
+                  </CardFooter>
                 </Card>
               </motion.div>
             ))}
           </div>
         </TabsContent>
         
-        {/* Books Tab */}
-        <TabsContent value="books" className="space-y-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((book, index) => (
+        <TabsContent value="books" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {books.map((book) => (
               <motion.div
                 key={book.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.3 }}
               >
-                <Card className="overflow-hidden border border-gray-100 bg-white h-full flex flex-col">
-                  <div className="flex p-4 gap-4">
-                    <div className="w-24 h-32 flex-shrink-0 rounded overflow-hidden shadow-md">
-                      <img 
-                        src={book.cover} 
-                        alt={book.title} 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium mb-1">{book.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                      <p className="text-sm text-gray-700 line-clamp-3">{book.description}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {book.tags.map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs font-normal">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+                <Card className="h-full flex flex-col overflow-hidden">
+                  <div className="aspect-[2/3] overflow-hidden">
+                    <img 
+                      src={book.coverUrl} 
+                      alt={book.title} 
+                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                    />
                   </div>
-                  
-                  <div className="mt-auto p-4 pt-2 border-t flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        onClick={() => handleLike(book.id)}
-                      >
-                        <Heart 
-                          className={`h-5 w-5 ${likedPosts.includes(book.id) ? 'text-love-deep fill-love-deep' : 'text-gray-700'}`} 
-                        />
-                      </Button>
-                      <span className="text-sm text-gray-500 self-center">{book.likes + (likedPosts.includes(book.id) ? 1 : 0)}</span>
+                  <CardContent className="pt-4 flex-grow">
+                    <h3 className="font-medium text-lg">{book.title}</h3>
+                    <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
+                    <p className="text-sm text-gray-700">{book.description}</p>
+                  </CardContent>
+                  <CardFooter className="pt-0 flex justify-between">
+                    <span className="text-xs text-gray-500">{book.category}</span>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-xs font-medium">{book.rating}</span>
+                      <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                      </svg>
                     </div>
-                    
-                    <Button variant="outline" size="sm" className="text-xs px-3">
-                      Read More
-                    </Button>
-                  </div>
+                  </CardFooter>
                 </Card>
               </motion.div>
             ))}
           </div>
         </TabsContent>
         
-        {/* Songs Tab */}
-        <TabsContent value="songs" className="space-y-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {songs.map((song, index) => (
+        <TabsContent value="songs" className="mt-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {songs.map((song) => (
               <motion.div
                 key={song.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.3 }}
               >
-                <Card className="overflow-hidden border border-gray-100 bg-white h-full flex flex-col">
-                  <div className="relative aspect-video">
-                    <img 
-                      src={song.image} 
-                      alt={song.title} 
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
-                      <div className="p-4 text-white">
-                        <h3 className="font-medium text-lg">{song.title}</h3>
-                        <p className="text-gray-200">{song.artist} · {song.year}</p>
+                <Card className="overflow-hidden">
+                  <div className="flex">
+                    <div className="w-24 h-24 flex-shrink-0">
+                      <img 
+                        src={song.coverUrl} 
+                        alt={song.album} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-grow flex flex-col p-4">
+                      <div className="flex-grow">
+                        <h3 className="font-medium">{song.title}</h3>
+                        <p className="text-sm text-gray-600">{song.artist}</p>
+                        <p className="text-xs text-gray-500 mt-1">{song.album}</p>
                       </div>
-                    </div>
-                    <Button 
-                      className="absolute top-3 right-3 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 h-9 w-9 p-0"
-                    >
-                      <Music className="h-4 w-4 text-white" />
-                    </Button>
-                  </div>
-                  
-                  <div className="p-4 flex justify-between items-center">
-                    <div className="flex flex-wrap gap-1">
-                      {song.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs font-normal">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        onClick={() => handleLike(song.id)}
-                      >
-                        <Heart 
-                          className={`h-5 w-5 ${likedPosts.includes(song.id) ? 'text-love-deep fill-love-deep' : 'text-gray-700'}`} 
-                        />
-                      </Button>
-                      <span className="text-sm text-gray-500 self-center">{song.likes + (likedPosts.includes(song.id) ? 1 : 0)}</span>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs text-gray-500">{song.genre}</span>
+                        <span className="text-xs text-gray-500">{song.duration}</span>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -366,13 +251,6 @@ const PhilosophyFeed = () => {
           </div>
         </TabsContent>
       </Tabs>
-      
-      <div className="flex justify-center mt-8">
-        <Button className="bg-transparent hover:bg-love-light/20 text-love-dark border border-love-medium/30 rounded-full px-6 gap-2">
-          <Sparkles className="h-4 w-4" />
-          <span>Discover more wisdom</span>
-        </Button>
-      </div>
     </div>
   );
 };

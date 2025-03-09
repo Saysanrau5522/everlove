@@ -1,242 +1,106 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, X, ChevronRight, BookOpen, Sparkles } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-// Add relationship advice topics for quick access
-const ADVICE_TOPICS = [
-  "Communication skills",
-  "Building trust",
-  "Love languages",
-  "Handling conflict",
-  "Long distance tips",
-  "Self-love practices"
-];
+import { Send, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAIConversation } from '@/hooks/use-ai-conversation';
+import { useAuth } from '@/context/AuthContext';
 
 const AICompanion = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{type: 'ai' | 'user', content: string}[]>([
-    {type: 'ai', content: 'Hello! I\'m your relationship companion. How can I help you today with your love journey?'}
-  ]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  
-  // Auto scroll to bottom of messages
+  const { user } = useAuth();
+  const { messages, loading, sendMessage } = useAIConversation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMessage = input.trim();
+    setInput('');
+    await sendMessage(userMessage);
+  };
+
+  // Scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    
-    // Add user message
-    const userMessage = {type: 'user' as const, content: input};
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-    
-    try {
-      // Call our Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('ai-companion', {
-        body: { messages: [...messages, userMessage] }
-      });
-      
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw error;
-      }
-      
-      if (!data || !data.response) {
-        throw new Error('Invalid response from AI service');
-      }
-      
-      // Add AI response
-      setMessages(prev => [...prev, {
-        type: 'ai', 
-        content: data.response
-      }]);
-    } catch (error) {
-      console.error('AI Companion error:', error);
-      toast({
-        title: "Connection issue",
-        description: "Couldn't connect to AI companion. Please try again.",
-        variant: "destructive"
-      });
-      
-      // Add fallback response
-      setMessages(prev => [...prev, {
-        type: 'ai', 
-        content: "I'm having trouble connecting right now. Please try again later."
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleQuickTopic = (topic: string) => {
-    setInput(`Can you give me advice about ${topic.toLowerCase()}?`);
-  };
-  
+
   return (
-    <>
-      {/* Floating button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.3 }}
-            className="fixed bottom-20 md:bottom-6 right-6 z-30"
-          >
-            <Button
-              onClick={() => setIsOpen(true)}
-              className="w-12 h-12 rounded-full bg-love-medium hover:bg-love-deep shadow-md flex items-center justify-center p-0 group"
-            >
-              <MessageCircle className="text-white h-6 w-6" />
-              <span className="absolute right-full mr-2 px-2 py-1 bg-white rounded-lg text-xs font-medium text-love-deep shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                Love Advisor
-              </span>
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <Card className="w-full max-w-md flex flex-col h-full border-none shadow-lg">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-medium flex items-center">
+          <span className="flex h-6 w-6 rounded-full bg-love-light items-center justify-center mr-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-love-deep opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-love-medium"></span>
+            </span>
+          </span>
+          Lovable AI
+        </CardTitle>
+      </CardHeader>
       
-      {/* AI companion modal */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="fixed bottom-16 md:bottom-6 right-6 z-30 w-full max-w-md"
-          >
-            <Card className="border shadow-xl overflow-hidden h-[500px] flex flex-col">
-              {/* Header */}
-              <div className="p-4 border-b bg-love-light/30 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Heart className="text-love-deep h-5 w-5" fill="currentColor" />
-                    <motion.div 
-                      className="absolute -inset-1 rounded-full border border-love-medium opacity-60"
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.2, 0.6] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                  </div>
-                  <h3 className="font-medium flex items-center gap-1">
-                    Relationship Guide
-                    <Sparkles className="h-3 w-3 text-love-medium" />
-                  </h3>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8 rounded-full hover:bg-love-light/50"
+      <CardContent className="flex-grow overflow-y-auto pb-2 pt-2">
+        <div className="space-y-4">
+          {messages.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <p>Ask me anything about love and relationships.</p>
+              <p className="text-xs mt-2">I'm your supportive companion for matters of the heart.</p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={message.id || index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex ${message.is_user ? 'justify-end' : 'justify-start'}`}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, i) => (
-                  <div 
-                    key={i} 
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  <div
+                    className={`max-w-[85%] px-4 py-2 rounded-lg ${
+                      message.is_user
+                        ? 'bg-wisdom-light text-wisdom-dark'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
                   >
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`max-w-[80%] p-3 rounded-2xl ${
-                        message.type === 'user' 
-                          ? 'bg-love-medium text-white rounded-tr-none' 
-                          : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                      }`}
-                    >
-                      {message.content}
-                    </motion.div>
+                    <p className="text-sm">{message.content}</p>
                   </div>
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="bg-gray-100 text-gray-800 max-w-[80%] p-3 rounded-2xl rounded-tl-none"
-                    >
-                      <div className="flex space-x-2">
-                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              
-              {/* Input */}
-              <div className="p-4 border-t bg-white">
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <Input
-                    type="text"
-                    placeholder={isLoading ? "AI is thinking..." : "Ask for advice..."}
-                    className="flex-1"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    disabled={isLoading}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="bg-love-medium hover:bg-love-deep"
-                    disabled={isLoading || !input.trim()}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                </form>
-                
-                {/* Quick topic buttons */}
-                <div className="mt-3 flex flex-wrap gap-2 justify-center">
-                  {ADVICE_TOPICS.slice(0, 3).map(topic => (
-                    <Button 
-                      key={topic} 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleQuickTopic(topic)}
-                      className="text-xs border-love-light hover:bg-love-light/20 text-gray-700"
-                      disabled={isLoading}
-                    >
-                      {topic}
-                    </Button>
-                  ))}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs text-gray-500 gap-1"
-                    onClick={() => setIsOpen(prev => !prev)}
-                    disabled={isLoading}
-                  >
-                    <BookOpen className="h-3 w-3" />
-                    <span>Love Library</span>
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </CardContent>
+      
+      <CardFooter className="pt-2">
+        <form onSubmit={handleSubmit} className="flex w-full space-x-2">
+          <Input
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={!user || loading}
+            className="flex-grow"
+          />
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={!input.trim() || !user || loading}
+            className="bg-love-medium hover:bg-love-deep text-white"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </form>
+      </CardFooter>
+    </Card>
   );
 };
 
