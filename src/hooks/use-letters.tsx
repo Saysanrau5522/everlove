@@ -34,6 +34,7 @@ export function useLetters() {
       const { data, error } = await supabase
         .from('letters')
         .select('*')
+        .eq('author_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -41,6 +42,7 @@ export function useLetters() {
       }
 
       setLetters(data || []);
+      console.log('Fetched letters:', data);
     } catch (error: any) {
       console.error('Error fetching letters:', error.message);
       toast({
@@ -57,6 +59,8 @@ export function useLetters() {
     try {
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Creating letter with data:', { ...letterData, author_id: user.id });
+      
       const { data, error } = await supabase
         .from('letters')
         .insert({
@@ -74,7 +78,9 @@ export function useLetters() {
       
       toast({
         title: 'Letter created',
-        description: 'Your letter has been saved successfully',
+        description: letterData.is_draft 
+          ? 'Your letter has been saved as a draft' 
+          : 'Your letter has been scheduled for delivery',
       });
       
       return data;
@@ -98,6 +104,7 @@ export function useLetters() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
+        .eq('author_id', user?.id)
         .select()
         .single();
 
@@ -129,7 +136,8 @@ export function useLetters() {
       const { error } = await supabase
         .from('letters')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('author_id', user?.id);
 
       if (error) {
         throw error;
@@ -154,6 +162,40 @@ export function useLetters() {
     }
   };
 
+  // This function will fetch user's received letters
+  const fetchReceivedLetters = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('letters')
+        .select(`
+          *,
+          profiles:author_id (full_name, avatar_url)
+        `)
+        .eq('recipient', user?.user_metadata?.full_name || '')
+        .eq('is_draft', false)
+        .lte('scheduled_for', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Received letters:', data);
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching received letters:', error.message);
+      toast({
+        variant: 'destructive',
+        title: 'Error fetching received letters',
+        description: error.message,
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     letters,
     loading,
@@ -161,5 +203,6 @@ export function useLetters() {
     createLetter,
     updateLetter,
     deleteLetter,
+    fetchReceivedLetters,
   };
 }

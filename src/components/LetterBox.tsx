@@ -5,18 +5,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Send, ArrowLeft, Clock, Heart } from 'lucide-react';
+import { Send, ArrowLeft, Clock, Heart, Save } from 'lucide-react';
 import { useLetters } from '@/hooks/use-letters';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import LetterTemplate from './LetterTemplate';
+import { addHours } from 'date-fns';
 
 const LetterBox = () => {
   const [recipient, setRecipient] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isWriting, setIsWriting] = useState(false);
-  const [isScheduling, setIsScheduling] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const { createLetter } = useLetters();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -26,12 +27,33 @@ const LetterBox = () => {
   };
 
   const handleBack = () => {
-    setIsWriting(false);
-    setIsScheduling(false);
+    if (isPreview) {
+      setIsPreview(false);
+    } else {
+      setIsWriting(false);
+    }
   };
 
-  const handleSchedule = () => {
-    setIsScheduling(true);
+  const handlePreview = () => {
+    if (!recipient) {
+      toast({
+        variant: 'destructive',
+        title: 'Recipient required',
+        description: 'Please enter a recipient for your letter.',
+      });
+      return;
+    }
+    
+    if (!content) {
+      toast({
+        variant: 'destructive',
+        title: 'Content required',
+        description: 'Please write some content for your letter.',
+      });
+      return;
+    }
+
+    setIsPreview(true);
   };
 
   const handleSendLetter = async (isDraft = false) => {
@@ -63,12 +85,15 @@ const LetterBox = () => {
     }
 
     try {
+      // Auto-schedule for 10 hours later
+      const scheduledTime = addHours(new Date(), 10);
+      
       const letterData = {
         title: title || 'Untitled Letter',
         content,
         recipient,
         is_draft: isDraft,
-        scheduled_for: isScheduling ? new Date(scheduledDate).toISOString() : null,
+        scheduled_for: isDraft ? null : scheduledTime.toISOString(),
       };
 
       const success = await createLetter(letterData);
@@ -78,20 +103,22 @@ const LetterBox = () => {
         setTitle('');
         setContent('');
         setIsWriting(false);
-        setIsScheduling(false);
-        setScheduledDate('');
+        setIsPreview(false);
 
         toast({
-          title: isDraft ? 'Draft saved' : 'Letter sent',
+          title: isDraft ? 'Draft saved' : 'Letter scheduled',
           description: isDraft 
             ? 'Your letter has been saved as a draft.' 
-            : isScheduling 
-              ? 'Your letter has been scheduled.' 
-              : 'Your letter has been sent.',
+            : `Your letter has been scheduled to be delivered in 10 hours.`,
         });
       }
     } catch (error) {
       console.error('Error sending letter:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error sending letter',
+        description: 'There was a problem sending your letter. Please try again.',
+      });
     }
   };
 
@@ -101,7 +128,7 @@ const LetterBox = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="w-full max-w-3xl mx-auto"
+      className="w-full max-w-4xl mx-auto"
     >
       <Card className="border-none shadow-lg bg-white">
         <CardContent className="p-6">
@@ -121,6 +148,41 @@ const LetterBox = () => {
                 </Button>
               </div>
             </div>
+          ) : isPreview ? (
+            // Letter preview
+            <div>
+              <div className="flex items-center mb-6">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBack}
+                  className="text-gray-500"
+                >
+                  <ArrowLeft size={20} />
+                </Button>
+                <h3 className="text-xl font-serif ml-2">Preview Your Letter</h3>
+              </div>
+
+              <div className="my-6">
+                <LetterTemplate recipient={recipient} sender={user?.user_metadata?.full_name || 'Me'}>
+                  {content}
+                </LetterTemplate>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => handleSendLetter(true)}>
+                  <Save size={16} className="mr-2" />
+                  Save as Draft
+                </Button>
+                <Button 
+                  onClick={() => handleSendLetter(false)} 
+                  className="bg-love-medium hover:bg-love-deep text-white"
+                >
+                  <Send size={16} className="mr-2" />
+                  Send Letter
+                </Button>
+              </div>
+            </div>
           ) : (
             // Letter writing view
             <div>
@@ -133,97 +195,65 @@ const LetterBox = () => {
                 >
                   <ArrowLeft size={20} />
                 </Button>
-                <h3 className="text-xl font-serif ml-2">
-                  {isScheduling ? 'Schedule Your Letter' : 'Write Your Letter'}
-                </h3>
+                <h3 className="text-xl font-serif ml-2">Write Your Letter</h3>
               </div>
 
-              {isScheduling ? (
-                // Scheduling view
-                <div className="space-y-6">
-                  <div>
-                    <label htmlFor="schedule-date" className="block text-sm font-medium text-gray-700 mb-1">
-                      Select Date and Time to Send
-                    </label>
-                    <Input
-                      id="schedule-date"
-                      type="datetime-local"
-                      value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                      min={new Date().toISOString().slice(0, 16)}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsScheduling(false)}>
-                      Back to Writing
-                    </Button>
-                    <Button 
-                      onClick={() => handleSendLetter(false)} 
-                      disabled={!scheduledDate}
-                      className="bg-love-medium hover:bg-love-deep text-white"
-                    >
-                      Schedule Letter
-                    </Button>
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">
+                    To
+                  </label>
+                  <Input
+                    id="recipient"
+                    placeholder="Recipient's Name"
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
-              ) : (
-                // Writing view
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">
-                      To
-                    </label>
-                    <Input
-                      id="recipient"
-                      placeholder="Recipient's Name"
-                      value={recipient}
-                      onChange={(e) => setRecipient(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                      Title (Optional)
-                    </label>
-                    <Input
-                      id="title"
-                      placeholder="Letter Title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
-                      Your Message
-                    </label>
-                    <Textarea
-                      id="content"
-                      placeholder="Write your heartfelt message here..."
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      className="w-full min-h-[200px] p-3"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-2">
-                    <Button variant="outline" onClick={() => handleSendLetter(true)}>
-                      Save as Draft
-                    </Button>
-                    <Button variant="outline" onClick={handleSchedule}>
-                      <Clock size={16} className="mr-2" />
-                      Schedule
-                    </Button>
-                    <Button 
-                      onClick={() => handleSendLetter(false)} 
-                      className="bg-love-medium hover:bg-love-deep text-white"
-                    >
-                      <Send size={16} className="mr-2" />
-                      Send Now
-                    </Button>
-                  </div>
+                <div>
+                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                    Title (Optional)
+                  </label>
+                  <Input
+                    id="title"
+                    placeholder="Letter Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
-              )}
+                <div>
+                  <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Message
+                  </label>
+                  <Textarea
+                    id="content"
+                    placeholder="My dearest..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="w-full min-h-[300px] p-4 font-serif"
+                    style={{ 
+                      backgroundImage: "linear-gradient(transparent, transparent 29px, #ddd 30px)",
+                      backgroundSize: "30px 30px", 
+                      lineHeight: "30px"
+                    }}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button variant="outline" onClick={() => handleSendLetter(true)}>
+                    <Save size={16} className="mr-2" />
+                    Save as Draft
+                  </Button>
+                  <Button 
+                    onClick={handlePreview} 
+                    className="bg-love-medium hover:bg-love-deep text-white"
+                  >
+                    <Heart size={16} className="mr-2" />
+                    Preview Letter
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

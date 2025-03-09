@@ -12,12 +12,13 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { message, conversation_history = [], concise = true } = await req.json();
+    const { message, conversation_history = [] } = await req.json();
 
     if (!message) {
       return new Response(
@@ -29,11 +30,25 @@ serve(async (req) => {
       );
     }
 
-    // Define the AI personality - Lovable, a relationship advisor with shorter, more heartfelt responses
+    // Create Supabase client to log conversations if user is authenticated
+    const authHeader = req.headers.get('Authorization');
+    let userId = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (!error && user) {
+        userId = user.id;
+      }
+    }
+
+    // Define the AI personality - Lovable, a relationship advisor
     const systemPrompt = 
-      `You are Lovable, a warm and compassionate relationship advisor who gives brief, straightforward advice with a touch of emotion. 
-      Your responses should be concise (2-3 sentences maximum) but still emotionally resonant and supportive. 
-      You speak like a caring friend who gets right to the heart of relationship matters without lengthy explanations. 
+      `You are Lovable, a warm and compassionate relationship advisor who gives straightforward advice with a touch of emotion. 
+      Your responses should be emotionally resonant and supportive. 
+      You speak like a caring friend who gets right to the heart of relationship matters. 
       Focus on practical guidance for building healthy, authentic connections. 
       Keep your tone warm and uplifting, but always honest and direct.`;
 
@@ -54,6 +69,8 @@ serve(async (req) => {
     // Add the current message
     fullPrompt.push({ role: "user", content: message });
 
+    console.log("Sending request to Hugging Face API with prompt:", JSON.stringify(fullPrompt));
+
     // Generate a response from the AI model
     const response = await fetch("https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct", {
       method: "POST",
@@ -64,8 +81,8 @@ serve(async (req) => {
       body: JSON.stringify({
         inputs: fullPrompt,
         parameters: {
-          max_new_tokens: 120, // Reduced token limit for shorter responses
-          temperature: 0.75,  // Slightly increased for more emotional language
+          max_new_tokens: 250,
+          temperature: 0.7,
           top_p: 0.9,
           do_sample: true,
           return_full_text: false,
@@ -74,10 +91,12 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      console.error(`API request failed with status ${response.status}`);
       throw new Error(`API request failed with status ${response.status}`);
     }
 
     const result = await response.json();
+    console.log("Response from Hugging Face API:", JSON.stringify(result));
     
     // Clean up the response
     let aiResponse = result.generated_text || "";
@@ -86,6 +105,57 @@ serve(async (req) => {
     aiResponse = aiResponse
       .replace(/^(assistant:|Assistant:|ASSISTANT:)/i, "")
       .trim();
+    
+    // Log conversation to Supabase if user is authenticated
+    if (userId) {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      // First check if there's an existing conversation for this user
+      const { data: existingConversations } = await supabase
+        .from('ai_conversations')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      let conversationId;
+      
+      if (existingConversations && existingConversations.length > 0) {
+        conversationId = existingConversations[0].id;
+      } else {
+        // Create a new conversation
+        const { data: newConversation, error: conversationError } = await supabase
+          .from('ai_conversations')
+          .insert({ user_id: userId })
+          .select();
+        
+        if (conversationError) {
+          console.error("Error creating conversation:", conversationError);
+        } else if (newConversation) {
+          conversationId = newConversation[0].id;
+        }
+      }
+      
+      if (conversationId) {
+        // Log user message
+        await supabase
+          .from('ai_messages')
+          .insert({
+            conversation_id: conversationId,
+            content: message,
+            is_user: true
+          });
+        
+        // Log AI response
+        await supabase
+          .from('ai_messages')
+          .insert({
+            conversation_id: conversationId,
+            content: aiResponse,
+            is_user: false
+          });
+      }
+    }
     
     return new Response(
       JSON.stringify({ message: aiResponse }),
