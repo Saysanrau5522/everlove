@@ -44,7 +44,13 @@ const AIChatLayout = () => {
     try {
       // Call our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('ai-companion', {
-        body: { messages: [...messages, userMessage] }
+        body: { 
+          message: input,
+          conversation_history: messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }))
+        }
       });
       
       if (error) {
@@ -52,14 +58,10 @@ const AIChatLayout = () => {
         throw error;
       }
       
-      if (!data || !data.response) {
-        throw new Error('Invalid response from AI service');
-      }
-      
       // Add AI response
       setMessages(prev => [...prev, {
         type: 'ai', 
-        content: data.response
+        content: data.message
       }]);
     } catch (error) {
       console.error('AI Companion error:', error);

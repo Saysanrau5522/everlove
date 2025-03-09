@@ -44,7 +44,11 @@ serve(async (req) => {
 
     // Add conversation history
     if (conversation_history && conversation_history.length > 0) {
-      fullPrompt = [...fullPrompt, ...conversation_history];
+      const formattedHistory = conversation_history.map(msg => ({
+        role: msg.role || (msg.is_user ? "user" : "assistant"),
+        content: msg.content
+      }));
+      fullPrompt = [...fullPrompt, ...formattedHistory];
     }
 
     // Add the current message
