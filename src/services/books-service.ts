@@ -1,4 +1,3 @@
-
 export interface BookInfo {
   id: string;
   title: string;
@@ -7,6 +6,8 @@ export interface BookInfo {
   coverUrl: string;
   category: string;
   rating: number;
+  amazonUrl?: string;
+  wattpadUrl?: string;
 }
 
 export async function getRelationshipBooks(count: number = 3): Promise<BookInfo[]> {
@@ -29,11 +30,14 @@ export async function getRelationshipBooks(count: number = 3): Promise<BookInfo[
         'No description available',
       coverUrl: book.volumeInfo.imageLinks?.thumbnail || '/placeholder.svg',
       category: book.volumeInfo.categories?.[0] || 'Relationships',
-      rating: book.volumeInfo.averageRating || (Math.random() * 2 + 3).toFixed(1)
+      rating: book.volumeInfo.averageRating || (Math.random() * 2 + 3).toFixed(1),
+      // Add Amazon affiliate link based on book title and author
+      amazonUrl: `https://www.amazon.com/s?k=${encodeURIComponent(book.volumeInfo.title + ' ' + (book.volumeInfo.authors?.[0] || ''))}`,
+      // Add Wattpad search link
+      wattpadUrl: `https://www.wattpad.com/search/${encodeURIComponent(book.volumeInfo.title)}`
     }));
   } catch (error) {
     console.error('Error fetching books:', error);
-    // Fallback to sample data
     return getSampleBooks();
   }
 }
@@ -49,6 +53,8 @@ function getSampleBooks(): BookInfo[] {
       coverUrl: "https://m.media-amazon.com/images/I/71JL+1vv0uL._AC_UF1000,1000_QL80_.jpg",
       category: "Relationships",
       rating: 4.8,
+      amazonUrl: "https://www.amazon.com/5-Love-Languages-Secret-Lasts/dp/080241270X",
+      wattpadUrl: "https://www.wattpad.com/search/5%20Love%20Languages"
     },
     {
       id: '2',
@@ -58,6 +64,8 @@ function getSampleBooks(): BookInfo[] {
       coverUrl: "https://m.media-amazon.com/images/I/71bXMIwxy5L._AC_UF1000,1000_QL80_.jpg",
       category: "Philosophy",
       rating: 4.7,
+      amazonUrl: "https://www.amazon.com/All-About-Love-Visions-Revolutionary/dp/0060959479",
+      wattpadUrl: "https://www.wattpad.com/search/All%20About%20Love"
     },
     {
       id: '3',
@@ -67,6 +75,8 @@ function getSampleBooks(): BookInfo[] {
       coverUrl: "https://m.media-amazon.com/images/I/41+BlKVyFvL._AC_UF1000,1000_QL80_.jpg",
       category: "Psychology",
       rating: 4.6,
+      amazonUrl: "https://www.amazon.com/Attached-Science-Adult-Attachment-Find/dp/1585429145",
+      wattpadUrl: "https://www.wattpad.com/search/Attached"
     }
   ];
 }
