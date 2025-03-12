@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book as BookIcon, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send, Play, Pause } from 'lucide-react';
+import { Book as BookIcon, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send, Play, Pause, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,6 +52,14 @@ const PhilosophyFeed = () => {
   const [loading, setLoading] = useState({
     songs: false,
     books: false,
+    moreSongs: false,
+    moreBooks: false
+  });
+  const [songOffset, setSongOffset] = useState(0);
+  const [bookStartIndex, setBookStartIndex] = useState(0);
+  const [hasMore, setHasMore] = useState({
+    books: true,
+    songs: true
   });
   
   const { toast } = useToast();
@@ -59,42 +67,92 @@ const PhilosophyFeed = () => {
 
   // Fetch songs and books when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      // Fetch songs
-      setLoading(prev => ({ ...prev, songs: true }));
-      try {
-        const songData = await getLoveSongs(5);
-        setSongs(songData);
-      } catch (error) {
-        console.error('Error fetching songs:', error);
-        toast({
-          title: "Couldn't load songs",
-          description: "Using sample data instead",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(prev => ({ ...prev, songs: false }));
-      }
+    fetchInitialData();
+  }, []);
 
-      // Fetch books
-      setLoading(prev => ({ ...prev, books: true }));
-      try {
-        const bookData = await getRelationshipBooks(3);
-        setBooks(bookData);
-      } catch (error) {
-        console.error('Error fetching books:', error);
-        toast({
-          title: "Couldn't load books",
-          description: "Using sample data instead",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(prev => ({ ...prev, books: false }));
-      }
-    };
+  const fetchInitialData = async () => {
+    // Fetch initial songs
+    setLoading(prev => ({ ...prev, songs: true }));
+    try {
+      const songData = await getLoveSongs(5, 0);
+      setSongs(songData);
+      setSongOffset(5);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+      toast({
+        title: "Couldn't load songs",
+        description: "Using sample data instead",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, songs: false }));
+    }
 
-    fetchData();
-  }, [toast]);
+    // Fetch initial books
+    setLoading(prev => ({ ...prev, books: true }));
+    try {
+      const bookData = await getRelationshipBooks(3, 0);
+      setBooks(bookData);
+      setBookStartIndex(3);
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      toast({
+        title: "Couldn't load books",
+        description: "Using sample data instead",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, books: false }));
+    }
+  };
+
+  const fetchMoreBooks = async () => {
+    if (loading.moreBooks || !hasMore.books) return;
+    
+    setLoading(prev => ({ ...prev, moreBooks: true }));
+    try {
+      const newBooks = await getRelationshipBooks(3, bookStartIndex);
+      if (newBooks.length === 0) {
+        setHasMore(prev => ({ ...prev, books: false }));
+      } else {
+        setBooks(prevBooks => [...prevBooks, ...newBooks]);
+        setBookStartIndex(prevIndex => prevIndex + 3);
+      }
+    } catch (error) {
+      console.error('Error fetching more books:', error);
+      toast({
+        title: "Couldn't load more books",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, moreBooks: false }));
+    }
+  };
+
+  const fetchMoreSongs = async () => {
+    if (loading.moreSongs || !hasMore.songs) return;
+    
+    setLoading(prev => ({ ...prev, moreSongs: true }));
+    try {
+      const newSongs = await getLoveSongs(5, songOffset);
+      if (newSongs.length === 0) {
+        setHasMore(prev => ({ ...prev, songs: false }));
+      } else {
+        setSongs(prevSongs => [...prevSongs, ...newSongs]);
+        setSongOffset(prevOffset => prevOffset + 5);
+      }
+    } catch (error) {
+      console.error('Error fetching more songs:', error);
+      toast({
+        title: "Couldn't load more songs",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, moreSongs: false }));
+    }
+  };
 
   // Pause any playing audio when unmounting
   useEffect(() => {
@@ -114,6 +172,12 @@ const PhilosophyFeed = () => {
   const goToNextSong = () => {
     pausePreview();
     setDirection(1);
+    
+    if (currentSongIndex === songs.length - 2) {
+      // We're approaching the end, fetch more songs
+      fetchMoreSongs();
+    }
+    
     setCurrentSongIndex((prevIndex) => 
       prevIndex === songs.length - 1 ? 0 : prevIndex + 1
     );
@@ -157,6 +221,8 @@ const PhilosophyFeed = () => {
   };
 
   const handlePlayToggle = () => {
+    if (songs.length === 0) return;
+    
     const currentSong = songs[currentSongIndex];
     
     if (currentSong.isPlaying) {
@@ -182,6 +248,21 @@ const PhilosophyFeed = () => {
       opacity: 0
     })
   };
+
+  // Intersection Observer for infinite loading
+  const bookObserverRef = useRef<IntersectionObserver | null>(null);
+  const lastBookElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading.moreBooks) return;
+    if (bookObserverRef.current) bookObserverRef.current.disconnect();
+    
+    bookObserverRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore.books) {
+        fetchMoreBooks();
+      }
+    });
+    
+    if (node) bookObserverRef.current.observe(node);
+  }, [loading.moreBooks, hasMore.books]);
 
   if (loading.songs && songs.length === 0) {
     return <div className="h-[500px] flex items-center justify-center">
@@ -259,17 +340,18 @@ const PhilosophyFeed = () => {
         
         <TabsContent value="books" className="mt-6">
           <div className="grid gap-6 md:grid-cols-3">
-            {loading.books ? (
+            {loading.books && books.length === 0 ? (
               <div className="col-span-3 flex justify-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-love-medium"></div>
               </div>
             ) : (
-              books.map((book) => (
+              books.map((book, index) => (
                 <motion.div
                   key={book.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.3, delay: index % 3 * 0.1 }}
+                  ref={index === books.length - 1 ? lastBookElementRef : null}
                 >
                   <Card className="h-full flex flex-col overflow-hidden">
                     <div className="aspect-[2/3] overflow-hidden">
@@ -316,80 +398,96 @@ const PhilosophyFeed = () => {
               ))
             )}
           </div>
+          
+          {/* Loading indicator for more books */}
+          {loading.moreBooks && (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-love-medium"></div>
+            </div>
+          )}
+          
+          {/* No more books message */}
+          {!hasMore.books && books.length > 0 && (
+            <div className="text-center py-6 text-gray-500">
+              No more books to load
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="songs" className="mt-6">
           <div className="relative h-[500px] overflow-hidden rounded-xl mx-auto max-w-md">
             <AnimatePresence initial={false} custom={direction}>
-              <motion.div
-                key={currentSongIndex}
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{
-                  x: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
-                }}
-                className="absolute w-full h-full"
-              >
-                <Card className={`w-full h-full overflow-hidden bg-gradient-to-br ${songs[currentSongIndex]?.color || 'from-love-light to-love-deep'} p-6 flex flex-col justify-between text-white shadow-xl`}>
-                  <div className="relative z-10">
-                    <div className="text-sm opacity-80 mb-1">
-                      {songs[currentSongIndex]?.artist || 'Artist'}
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2">
-                      {songs[currentSongIndex]?.title || 'Song Title'}
-                    </h3>
-                  </div>
-                  
-                  <div className="flex-1 flex items-center justify-center z-10 relative">
-                    <div className="text-center whitespace-pre-line text-lg font-medium italic">
-                      "{songs[currentSongIndex]?.lyrics || 'No lyrics available'}"
-                    </div>
-                    
-                    {songs[currentSongIndex]?.imageUrl && (
-                      <div className="absolute -bottom-20 -right-20 w-40 h-40 opacity-30 rounded-full overflow-hidden">
-                        <img 
-                          src={songs[currentSongIndex].imageUrl} 
-                          alt={songs[currentSongIndex].title}
-                          className="w-full h-full object-cover"
-                        />
+              {songs.length > 0 && (
+                <motion.div
+                  key={currentSongIndex}
+                  custom={direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{
+                    x: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 }
+                  }}
+                  className="absolute w-full h-full"
+                >
+                  <Card className={`w-full h-full overflow-hidden bg-gradient-to-br ${songs[currentSongIndex]?.color || 'from-love-light to-love-deep'} p-6 flex flex-col justify-between text-white shadow-xl`}>
+                    <div className="relative z-10">
+                      <div className="text-sm opacity-80 mb-1">
+                        {songs[currentSongIndex]?.artist || 'Artist'}
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex justify-between items-center z-10">
-                    <Button 
-                      onClick={handlePlayToggle}
-                      variant="secondary" 
-                      size="sm"
-                      className="bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-                      disabled={!songs[currentSongIndex]?.previewUrl}
-                    >
-                      {songs[currentSongIndex]?.isPlaying ? 
-                        <Pause size={16} className="mr-2" /> : 
-                        <Play size={16} className="mr-2" />
-                      }
-                      <span>{songs[currentSongIndex]?.isPlaying ? 'Pause' : 'Play'} Preview</span>
-                    </Button>
+                      <h3 className="text-2xl font-bold mb-2">
+                        {songs[currentSongIndex]?.title || 'Song Title'}
+                      </h3>
+                    </div>
                     
-                    <Button 
-                      onClick={handleSendSong}
-                      variant="secondary" 
-                      className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-                    >
-                      <Send size={16} />
-                      <span>Send to Loved One</span>
-                    </Button>
-                  </div>
-                  
-                  {/* Background decorative elements */}
-                  <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 -mr-32 -mt-32 blur-md"></div>
-                  <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-black/10 -ml-24 -mb-24 blur-md"></div>
-                </Card>
-              </motion.div>
+                    <div className="flex-1 flex items-center justify-center z-10 relative">
+                      <div className="text-center whitespace-pre-line text-lg font-medium italic">
+                        "{songs[currentSongIndex]?.lyrics || 'No lyrics available'}"
+                      </div>
+                      
+                      {songs[currentSongIndex]?.imageUrl && (
+                        <div className="absolute -bottom-20 -right-20 w-40 h-40 opacity-30 rounded-full overflow-hidden">
+                          <img 
+                            src={songs[currentSongIndex].imageUrl} 
+                            alt={songs[currentSongIndex].title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-center z-10">
+                      <Button 
+                        onClick={handlePlayToggle}
+                        variant="secondary" 
+                        size="sm"
+                        className="bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                        disabled={!songs[currentSongIndex]?.previewUrl}
+                      >
+                        {songs[currentSongIndex]?.isPlaying ? 
+                          <Pause size={16} className="mr-2" /> : 
+                          <Play size={16} className="mr-2" />
+                        }
+                        <span>{songs[currentSongIndex]?.isPlaying ? 'Pause' : 'Play'} Preview</span>
+                      </Button>
+                      
+                      <Button 
+                        onClick={handleSendSong}
+                        variant="secondary" 
+                        className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                      >
+                        <Send size={16} />
+                        <span>Send to Loved One</span>
+                      </Button>
+                    </div>
+                    
+                    {/* Background decorative elements */}
+                    <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 -mr-32 -mt-32 blur-md"></div>
+                    <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-black/10 -ml-24 -mb-24 blur-md"></div>
+                  </Card>
+                </motion.div>
+              )}
             </AnimatePresence>
             
             {/* Navigation buttons */}
@@ -410,17 +508,30 @@ const PhilosophyFeed = () => {
             </button>
           </div>
           
-          {/* Song indicators */}
-          <div className="flex justify-center mt-4 gap-2">
-            {songs.map((_, index) => (
+          {/* Song indicators with loading state */}
+          <div className="flex justify-center mt-4 gap-2 items-center">
+            {songs.slice(0, Math.min(10, songs.length)).map((_, index) => (
               <div 
                 key={index} 
                 className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentSongIndex ? "bg-love-deep w-4" : "bg-gray-300"
+                  index === currentSongIndex % 10 ? "bg-love-deep w-4" : "bg-gray-300"
                 }`}
               />
             ))}
+            {songs.length > 10 && (
+              <span className="text-xs text-gray-500 ml-2">+{songs.length - 10} more</span>
+            )}
+            {loading.moreSongs && (
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-love-medium ml-2"></div>
+            )}
           </div>
+          
+          {/* Message when no more songs */}
+          {!hasMore.songs && songs.length > 0 && (
+            <div className="text-center mt-4 text-gray-500 text-sm">
+              All available songs loaded
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
