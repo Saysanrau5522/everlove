@@ -196,6 +196,42 @@ export function useLetters() {
     }
   };
 
+  // New function to get a single letter by ID
+  const getLetterById = async (id: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('letters')
+        .select(`
+          *,
+          profiles:author_id (full_name, avatar_url)
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Letter not found');
+      }
+
+      console.log('Fetched letter:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Error fetching letter:', error.message);
+      toast({
+        variant: 'destructive',
+        title: 'Error fetching letter',
+        description: error.message,
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     letters,
     loading,
@@ -204,5 +240,6 @@ export function useLetters() {
     updateLetter,
     deleteLetter,
     fetchReceivedLetters,
+    getLetterById,
   };
 }

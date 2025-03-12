@@ -145,6 +145,65 @@ export type Database = {
           },
         ]
       }
+      letter_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      letter_drafts: {
+        Row: {
+          category_id: string | null
+          content: string | null
+          created_at: string
+          id: string
+          last_saved_at: string
+          recipient: string | null
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          last_saved_at?: string
+          recipient?: string | null
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          last_saved_at?: string
+          recipient?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_drafts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "letter_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       letter_templates: {
         Row: {
           category: string | null
@@ -244,6 +303,60 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_reports: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          letter_id: string | null
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          resolved_at: string | null
+          resolver_id: string | null
+          status: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          letter_id?: string | null
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          resolved_at?: string | null
+          resolver_id?: string | null
+          status?: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          letter_id?: string | null
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolved_at?: string | null
+          resolver_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_reports_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "letters"
             referencedColumns: ["id"]
           },
         ]
@@ -357,6 +470,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
