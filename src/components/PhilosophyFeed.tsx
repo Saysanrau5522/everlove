@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getLoveSongs, SpotifySong } from '@/services/songs-service';
-import { getRelationshipBooks, Book } from '@/services/books-service';
+import { getRelationshipBooks, BookInfo } from '@/services/books-service';
 
 // Sample content for quotes
 const quotes = [
@@ -48,7 +48,7 @@ const PhilosophyFeed = () => {
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [songs, setSongs] = useState<SpotifySong[]>([]);
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<BookInfo[]>([]);
   const [loading, setLoading] = useState({
     songs: false,
     books: false,

@@ -1,5 +1,5 @@
 
-export interface Book {
+export interface BookInfo {
   id: string;
   title: string;
   author: string;
@@ -9,7 +9,7 @@ export interface Book {
   rating: number;
 }
 
-export async function getRelationshipBooks(count: number = 3): Promise<Book[]> {
+export async function getRelationshipBooks(count: number = 3): Promise<BookInfo[]> {
   try {
     // Google Books API doesn't require authentication for basic searches
     const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=subject:love+relationships&maxResults=${count}&orderBy=relevance`);
@@ -39,7 +39,7 @@ export async function getRelationshipBooks(count: number = 3): Promise<Book[]> {
 }
 
 // Sample fallback data
-function getSampleBooks(): Book[] {
+function getSampleBooks(): BookInfo[] {
   return [
     {
       id: '1',
