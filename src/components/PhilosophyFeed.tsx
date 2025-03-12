@@ -1,12 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { Book as BookIcon, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send, Play, Pause } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getLoveSongs, SpotifySong } from '@/services/songs-service';
+import { getLoveSongs, SpotifySong, playPreview, pausePreview } from '@/services/songs-service';
 import { getRelationshipBooks, BookInfo } from '@/services/books-service';
 
 // Sample content for quotes
@@ -95,6 +96,13 @@ const PhilosophyFeed = () => {
     fetchData();
   }, [toast]);
 
+  // Pause any playing audio when unmounting
+  useEffect(() => {
+    return () => {
+      pausePreview();
+    };
+  }, []);
+
   const toggleSave = (id: number) => {
     if (savedItems.includes(id)) {
       setSavedItems(savedItems.filter(itemId => itemId !== id));
@@ -104,17 +112,25 @@ const PhilosophyFeed = () => {
   };
 
   const goToNextSong = () => {
+    pausePreview();
     setDirection(1);
     setCurrentSongIndex((prevIndex) => 
       prevIndex === songs.length - 1 ? 0 : prevIndex + 1
     );
+    
+    // Reset isPlaying state for all songs
+    updateSongPlayingState(-1);
   };
 
   const goToPreviousSong = () => {
+    pausePreview();
     setDirection(-1);
     setCurrentSongIndex((prevIndex) => 
       prevIndex === 0 ? songs.length - 1 : prevIndex - 1
     );
+    
+    // Reset isPlaying state for all songs
+    updateSongPlayingState(-1);
   };
 
   const handleSendSong = () => {
@@ -133,6 +149,25 @@ const PhilosophyFeed = () => {
     });
   };
 
+  const updateSongPlayingState = (playingIndex: number) => {
+    setSongs(prevSongs => prevSongs.map((song, idx) => ({
+      ...song,
+      isPlaying: idx === playingIndex
+    })));
+  };
+
+  const handlePlayToggle = () => {
+    const currentSong = songs[currentSongIndex];
+    
+    if (currentSong.isPlaying) {
+      pausePreview();
+      updateSongPlayingState(-1);
+    } else {
+      playPreview(currentSong);
+      updateSongPlayingState(currentSongIndex);
+    }
+  };
+
   const variants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 1000 : -1000,
@@ -146,26 +181,6 @@ const PhilosophyFeed = () => {
       x: direction < 0 ? 1000 : -1000,
       opacity: 0
     })
-  };
-
-  const handlePlayPreview = () => {
-    const song = songs[currentSongIndex];
-    if (song.previewUrl) {
-      // Create an audio element and play the preview
-      const audio = new Audio(song.previewUrl);
-      audio.play();
-      
-      toast({
-        title: "Playing preview",
-        description: `${song.title} by ${song.artist}`,
-      });
-    } else {
-      toast({
-        title: "No preview available",
-        description: "Sorry, no preview is available for this song",
-        variant: "destructive",
-      });
-    }
   };
 
   if (loading.songs && songs.length === 0) {
@@ -187,7 +202,7 @@ const PhilosophyFeed = () => {
             Quotes
           </TabsTrigger>
           <TabsTrigger value="books" className="flex items-center">
-            <Book size={16} className="mr-2" />
+            <BookIcon size={16} className="mr-2" />
             Books
           </TabsTrigger>
           <TabsTrigger value="songs" className="flex items-center">
@@ -347,14 +362,17 @@ const PhilosophyFeed = () => {
                   
                   <div className="flex justify-between items-center z-10">
                     <Button 
-                      onClick={handlePlayPreview}
+                      onClick={handlePlayToggle}
                       variant="secondary" 
                       size="sm"
                       className="bg-white/20 hover:bg-white/30 backdrop-blur-sm"
                       disabled={!songs[currentSongIndex]?.previewUrl}
                     >
-                      <Music size={16} className="mr-2" />
-                      <span>Play Preview</span>
+                      {songs[currentSongIndex]?.isPlaying ? 
+                        <Pause size={16} className="mr-2" /> : 
+                        <Play size={16} className="mr-2" />
+                      }
+                      <span>{songs[currentSongIndex]?.isPlaying ? 'Pause' : 'Play'} Preview</span>
                     </Button>
                     
                     <Button 
