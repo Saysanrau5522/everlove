@@ -12,15 +12,19 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("AI companion function received request");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { message, conversation_history = [] } = await req.json();
+    const requestData = await req.json();
+    const { message, conversation_history = [] } = requestData;
 
     if (!message) {
+      console.error("No message provided in request");
       return new Response(
         JSON.stringify({ error: "Message is required" }),
         { 
@@ -29,6 +33,9 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log("Processing message:", message);
+    console.log("With conversation history length:", conversation_history.length);
 
     // Create Supabase client to log conversations if user is authenticated
     const authHeader = req.headers.get('Authorization');
@@ -41,7 +48,12 @@ serve(async (req) => {
       const { data: { user }, error } = await supabase.auth.getUser(token);
       if (!error && user) {
         userId = user.id;
+        console.log("User authenticated:", userId);
+      } else {
+        console.log("Auth error or no user:", error);
       }
+    } else {
+      console.log("No auth header or invalid format");
     }
 
     // Define the AI personality - Lovable, a relationship advisor
@@ -69,7 +81,7 @@ serve(async (req) => {
     // Add the current message
     fullPrompt.push({ role: "user", content: message });
 
-    console.log("Sending request to Hugging Face API with prompt:", JSON.stringify(fullPrompt));
+    console.log("Sending request to Hugging Face API");
 
     // Generate a response from the AI model
     const response = await fetch("https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct", {
@@ -92,11 +104,74 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error(`API request failed with status ${response.status}`);
-      throw new Error(`API request failed with status ${response.status}`);
+      console.error("Response:", await response.text());
+      
+      // Fallback response when the API fails
+      const fallbackResponse = "I'm having trouble connecting to my brain right now. Please try again in a moment. In the meantime, remember that communication is key in any relationship.";
+      
+      // Log the fallback response if user is authenticated
+      if (userId) {
+        try {
+          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+          
+          // Check for existing conversation or create one
+          const { data: existingConversations } = await supabase
+            .from('ai_conversations')
+            .select('id')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          let conversationId;
+          
+          if (existingConversations && existingConversations.length > 0) {
+            conversationId = existingConversations[0].id;
+          } else {
+            const { data: newConversation } = await supabase
+              .from('ai_conversations')
+              .insert({ user_id: userId })
+              .select();
+            
+            if (newConversation) {
+              conversationId = newConversation[0].id;
+            }
+          }
+          
+          if (conversationId) {
+            // Log user message
+            await supabase
+              .from('ai_messages')
+              .insert({
+                conversation_id: conversationId,
+                content: message,
+                is_user: true
+              });
+            
+            // Log fallback response
+            await supabase
+              .from('ai_messages')
+              .insert({
+                conversation_id: conversationId,
+                content: fallbackResponse,
+                is_user: false
+              });
+          }
+        } catch (logError) {
+          console.error("Error logging fallback message:", logError);
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ message: fallbackResponse }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200 
+        }
+      );
     }
 
     const result = await response.json();
-    console.log("Response from Hugging Face API:", JSON.stringify(result));
+    console.log("Response received from Hugging Face API");
     
     // Clean up the response
     let aiResponse = result.generated_text || "";
@@ -106,57 +181,79 @@ serve(async (req) => {
       .replace(/^(assistant:|Assistant:|ASSISTANT:)/i, "")
       .trim();
     
+    console.log("Cleaned AI response:", aiResponse);
+    
     // Log conversation to Supabase if user is authenticated
     if (userId) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-      
-      // First check if there's an existing conversation for this user
-      const { data: existingConversations } = await supabase
-        .from('ai_conversations')
-        .select('id')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      let conversationId;
-      
-      if (existingConversations && existingConversations.length > 0) {
-        conversationId = existingConversations[0].id;
-      } else {
-        // Create a new conversation
-        const { data: newConversation, error: conversationError } = await supabase
+      try {
+        console.log("Logging conversation to Supabase");
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        
+        // First check if there's an existing conversation for this user
+        const { data: existingConversations } = await supabase
           .from('ai_conversations')
-          .insert({ user_id: userId })
-          .select();
+          .select('id')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1);
         
-        if (conversationError) {
-          console.error("Error creating conversation:", conversationError);
-        } else if (newConversation) {
-          conversationId = newConversation[0].id;
+        let conversationId;
+        
+        if (existingConversations && existingConversations.length > 0) {
+          conversationId = existingConversations[0].id;
+          console.log("Using existing conversation:", conversationId);
+        } else {
+          // Create a new conversation
+          const { data: newConversation, error: conversationError } = await supabase
+            .from('ai_conversations')
+            .insert({ user_id: userId })
+            .select();
+          
+          if (conversationError) {
+            console.error("Error creating conversation:", conversationError);
+          } else if (newConversation) {
+            conversationId = newConversation[0].id;
+            console.log("Created new conversation:", conversationId);
+          }
         }
-      }
-      
-      if (conversationId) {
-        // Log user message
-        await supabase
-          .from('ai_messages')
-          .insert({
-            conversation_id: conversationId,
-            content: message,
-            is_user: true
-          });
         
-        // Log AI response
-        await supabase
-          .from('ai_messages')
-          .insert({
-            conversation_id: conversationId,
-            content: aiResponse,
-            is_user: false
-          });
+        if (conversationId) {
+          // Log user message
+          const { error: userMsgError } = await supabase
+            .from('ai_messages')
+            .insert({
+              conversation_id: conversationId,
+              content: message,
+              is_user: true
+            });
+            
+          if (userMsgError) {
+            console.error("Error logging user message:", userMsgError);
+          } else {
+            console.log("Logged user message");
+          }
+          
+          // Log AI response
+          const { error: aiMsgError } = await supabase
+            .from('ai_messages')
+            .insert({
+              conversation_id: conversationId,
+              content: aiResponse,
+              is_user: false
+            });
+            
+          if (aiMsgError) {
+            console.error("Error logging AI response:", aiMsgError);
+          } else {
+            console.log("Logged AI response");
+          }
+        }
+      } catch (logError) {
+        console.error("Error in Supabase logging:", logError);
       }
     }
     
+    console.log("Returning successful response");
     return new Response(
       JSON.stringify({ message: aiResponse }),
       { 
@@ -168,7 +265,7 @@ serve(async (req) => {
     console.error("Error processing request:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unknown error occurred" }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500 
