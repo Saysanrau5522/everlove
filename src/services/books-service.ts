@@ -1,4 +1,3 @@
-
 export interface BookInfo {
   id: string;
   title: string;
@@ -9,12 +8,18 @@ export interface BookInfo {
   rating: number;
   amazonUrl?: string;
   wattpadUrl?: string;
+  saved?: boolean;
 }
 
-export async function getRelationshipBooks(count: number = 3, startIndex: number = 0): Promise<BookInfo[]> {
+export async function getRelationshipBooks(count: number = 3, startIndex: number = 0, category?: string): Promise<BookInfo[]> {
   try {
+    // Customize query based on category if provided
+    const query = category && category !== 'relationships' 
+      ? `subject:${category}`
+      : 'subject:love+relationships';
+      
     // Google Books API doesn't require authentication for basic searches
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=subject:love+relationships&maxResults=${count}&startIndex=${startIndex}&orderBy=relevance`);
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=${count}&startIndex=${startIndex}&orderBy=relevance`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch books from Google Books API');
@@ -35,22 +40,23 @@ export async function getRelationshipBooks(count: number = 3, startIndex: number
         book.volumeInfo.description.substring(0, 150) + (book.volumeInfo.description.length > 150 ? '...' : '') : 
         'No description available',
       coverUrl: book.volumeInfo.imageLinks?.thumbnail || '/placeholder.svg',
-      category: book.volumeInfo.categories?.[0] || 'Relationships',
+      category: book.volumeInfo.categories?.[0] || category || 'Relationships',
       rating: book.volumeInfo.averageRating || (Math.random() * 2 + 3).toFixed(1),
       // Add Amazon affiliate link based on book title and author
       amazonUrl: `https://www.amazon.com/s?k=${encodeURIComponent(book.volumeInfo.title + ' ' + (book.volumeInfo.authors?.[0] || ''))}`,
       // Add Wattpad search link
-      wattpadUrl: `https://www.wattpad.com/search/${encodeURIComponent(book.volumeInfo.title)}`
+      wattpadUrl: `https://www.wattpad.com/search/${encodeURIComponent(book.volumeInfo.title)}`,
+      saved: false
     }));
   } catch (error) {
     console.error('Error fetching books:', error);
-    return getSampleBooks(startIndex, count);
+    return getSampleBooks(category, startIndex, count);
   }
 }
 
 // Sample fallback data with pagination support
-function getSampleBooks(startIndex: number = 0, count: number = 3): BookInfo[] {
-  const allSampleBooks = [
+function getSampleBooks(category?: string, startIndex: number = 0, count: number = 3): BookInfo[] {
+  let allSampleBooks = [
     {
       id: '1',
       title: "The 5 Love Languages",
@@ -184,6 +190,105 @@ function getSampleBooks(startIndex: number = 0, count: number = 3): BookInfo[] {
       wattpadUrl: "https://www.wattpad.com/search/Emotional%20Intelligence"
     }
   ];
+  
+  // Add more sample books with different genres
+  allSampleBooks = [
+    ...allSampleBooks,
+    {
+      id: '13',
+      title: "The Art of Logical Thinking",
+      author: "William Walker Atkinson",
+      description: "A guide to thinking clearly and rationally in any situation.",
+      coverUrl: "https://m.media-amazon.com/images/I/81wPu8WKIeL._AC_UF1000,1000_QL80_.jpg",
+      category: "Philosophy",
+      rating: 4.3,
+      amazonUrl: "https://www.amazon.com/Art-Logical-Thinking-William-Atkinson/dp/1535188758",
+      wattpadUrl: "https://www.wattpad.com/search/The%20Art%20of%20Logical%20Thinking"
+    },
+    {
+      id: '14',
+      title: "The Road Less Traveled",
+      author: "M. Scott Peck",
+      description: "A new psychology of love, traditional values and spiritual growth.",
+      coverUrl: "https://m.media-amazon.com/images/I/614IdjJR4wL._AC_UF1000,1000_QL80_.jpg",
+      category: "Psychology",
+      rating: 4.7,
+      amazonUrl: "https://www.amazon.com/Road-Less-Traveled-Psychology-Traditional/dp/0743243153",
+      wattpadUrl: "https://www.wattpad.com/search/The%20Road%20Less%20Traveled"
+    },
+    {
+      id: '15',
+      title: "How to Talk to Anyone",
+      author: "Leil Lowndes",
+      description: "92 little tricks for big success in relationships.",
+      coverUrl: "https://m.media-amazon.com/images/I/51vWRz0hcCL._AC_UF1000,1000_QL80_.jpg",
+      category: "Communication",
+      rating: 4.5,
+      amazonUrl: "https://www.amazon.com/How-Talk-Anyone-Success-Relationships/dp/007141858X",
+      wattpadUrl: "https://www.wattpad.com/search/How%20to%20Talk%20to%20Anyone"
+    },
+    {
+      id: '16',
+      title: "The Power of Now",
+      author: "Eckhart Tolle",
+      description: "A guide to spiritual enlightenment and living in the present moment.",
+      coverUrl: "https://m.media-amazon.com/images/I/714FbKtXS+L._AC_UF1000,1000_QL80_.jpg",
+      category: "Spirituality",
+      rating: 4.7,
+      amazonUrl: "https://www.amazon.com/Power-Now-Guide-Spiritual-Enlightenment/dp/1577314808",
+      wattpadUrl: "https://www.wattpad.com/search/The%20Power%20of%20Now"
+    },
+    {
+      id: '17',
+      title: "The Dating Playbook",
+      author: "Farrah Rochon",
+      description: "A modern guide to finding love in the digital age.",
+      coverUrl: "https://m.media-amazon.com/images/I/81ZLpZ2lTbL._AC_UF1000,1000_QL80_.jpg",
+      category: "Dating",
+      rating: 4.6,
+      amazonUrl: "https://www.amazon.com/Dating-Playbook-Farrah-Rochon/dp/1538716666",
+      wattpadUrl: "https://www.wattpad.com/search/Dating%20Playbook"
+    },
+    {
+      id: '18',
+      title: "Parenting with Love and Logic",
+      author: "Foster Cline & Jim Fay",
+      description: "Teaching children responsibility with a loving approach.",
+      coverUrl: "https://m.media-amazon.com/images/I/61xVVGrDQfL._AC_UF1000,1000_QL80_.jpg",
+      category: "Parenting",
+      rating: 4.7,
+      amazonUrl: "https://www.amazon.com/Parenting-Love-Logic-Foster-Cline/dp/1576839540",
+      wattpadUrl: "https://www.wattpad.com/search/Parenting%20with%20Love%20and%20Logic"
+    },
+    {
+      id: '19',
+      title: "Self-Compassion",
+      author: "Kristin Neff",
+      description: "The proven power of being kind to yourself.",
+      coverUrl: "https://m.media-amazon.com/images/I/71EUdNRY3GL._AC_UF1000,1000_QL80_.jpg",
+      category: "Self-Help",
+      rating: 4.6,
+      amazonUrl: "https://www.amazon.com/Self-Compassion-Proven-Power-Being-Yourself/dp/0061733520",
+      wattpadUrl: "https://www.wattpad.com/search/Self-Compassion"
+    },
+    {
+      id: '20',
+      title: "For Better: The Science of a Good Marriage",
+      author: "Tara Parker-Pope",
+      description: "Using science to improve your relationship.",
+      coverUrl: "https://m.media-amazon.com/images/I/71e3uig3SQL._AC_UF1000,1000_QL80_.jpg",
+      category: "Marriage",
+      rating: 4.4,
+      amazonUrl: "https://www.amazon.com/Better-Science-Marriage-Tara-Parker-Pope/dp/0452297109",
+      wattpadUrl: "https://www.wattpad.com/search/For%20Better%20Science%20Marriage"
+    }
+  ];
+
+  // Filter by category if provided
+  if (category && category !== 'all') {
+    allSampleBooks = allSampleBooks.filter(book => 
+      book.category.toLowerCase() === category.toLowerCase());
+  }
 
   return allSampleBooks.slice(startIndex, startIndex + count);
 }

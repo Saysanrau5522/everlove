@@ -1,82 +1,95 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Book as BookIcon, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send, Play, Pause, Plus } from 'lucide-react';
+import { Book as BookIcon, Music, Quote, Heart, Bookmark, Share2, ChevronLeft, ChevronRight, Send, Play, Pause, Tag, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getLoveSongs, SpotifySong, playPreview, pausePreview } from '@/services/songs-service';
 import { getRelationshipBooks, BookInfo } from '@/services/books-service';
-
-// Sample content for quotes
-const quotes = [
-  {
-    id: 1,
-    text: "Love is composed of a single soul inhabiting two bodies.",
-    author: "Aristotle",
-    category: "Philosophy",
-    likes: 342,
-  },
-  {
-    id: 2,
-    text: "The best thing to hold onto in life is each other.",
-    author: "Audrey Hepburn",
-    category: "Wisdom",
-    likes: 289,
-  },
-  {
-    id: 3,
-    text: "Being deeply loved by someone gives you strength, while loving someone deeply gives you courage.",
-    author: "Lao Tzu",
-    category: "Philosophy",
-    likes: 412,
-  },
-  {
-    id: 4,
-    text: "Love isn't something you find. Love is something that finds you.",
-    author: "Loretta Young",
-    category: "Wisdom",
-    likes: 256,
-  },
-];
+import { getQuotes, Quote as QuoteType, getQuoteCategories } from '@/services/quotes-service';
+import BookSidebar from './BookSidebar';
 
 const PhilosophyFeed = () => {
   const [activeTab, setActiveTab] = useState("quotes");
   const [savedItems, setSavedItems] = useState<number[]>([]);
+  const [savedBooks, setSavedBooks] = useState<string[]>([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [songs, setSongs] = useState<SpotifySong[]>([]);
   const [books, setBooks] = useState<BookInfo[]>([]);
+  const [quotes, setQuotes] = useState<QuoteType[]>([]);
   const [loading, setLoading] = useState({
     songs: false,
     books: false,
+    quotes: false,
     moreSongs: false,
-    moreBooks: false
+    moreBooks: false,
+    moreQuotes: false
   });
   const [songOffset, setSongOffset] = useState(0);
   const [bookStartIndex, setBookStartIndex] = useState(0);
+  const [quoteStartIndex, setQuoteStartIndex] = useState(0);
   const [hasMore, setHasMore] = useState({
     books: true,
-    songs: true
+    songs: true,
+    quotes: true
   });
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [quoteCategory, setQuoteCategory] = useState('all');
+  const quoteCategories = getQuoteCategories();
   
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch songs and books when component mounts
+  // Fetch initial data when component mounts
   useEffect(() => {
     fetchInitialData();
   }, []);
 
+  // Refetch books when category changes
+  useEffect(() => {
+    setBooks([]);
+    setBookStartIndex(0);
+    setHasMore(prev => ({ ...prev, books: true }));
+    fetchBooks(0, selectedCategory);
+  }, [selectedCategory]);
+
+  // Refetch quotes when category changes
+  useEffect(() => {
+    setQuotes([]);
+    setQuoteStartIndex(0);
+    setHasMore(prev => ({ ...prev, quotes: true }));
+    fetchQuotes();
+  }, [quoteCategory]);
+
   const fetchInitialData = async () => {
     // Fetch initial songs
-    setLoading(prev => ({ ...prev, songs: true }));
+    fetchSongs();
+    
+    // Fetch initial books
+    fetchBooks();
+    
+    // Fetch initial quotes
+    fetchQuotes();
+  };
+
+  const fetchSongs = async (offset = 0) => {
+    setLoading(prev => ({ ...prev, songs: songs.length === 0, moreSongs: songs.length > 0 }));
     try {
-      const songData = await getLoveSongs(5, 0);
-      setSongs(songData);
-      setSongOffset(5);
+      const songData = await getLoveSongs(5, offset);
+      if (offset === 0) {
+        setSongs(songData);
+      } else {
+        setSongs(prev => [...prev, ...songData]);
+      }
+      setSongOffset(offset + 5);
+      if (songData.length === 0) {
+        setHasMore(prev => ({ ...prev, songs: false }));
+      }
     } catch (error) {
       console.error('Error fetching songs:', error);
       toast({
@@ -85,15 +98,23 @@ const PhilosophyFeed = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(prev => ({ ...prev, songs: false }));
+      setLoading(prev => ({ ...prev, songs: false, moreSongs: false }));
     }
+  };
 
-    // Fetch initial books
-    setLoading(prev => ({ ...prev, books: true }));
+  const fetchBooks = async (startIndex = bookStartIndex, category = selectedCategory) => {
+    setLoading(prev => ({ ...prev, books: books.length === 0, moreBooks: books.length > 0 }));
     try {
-      const bookData = await getRelationshipBooks(3, 0);
-      setBooks(bookData);
-      setBookStartIndex(3);
+      const bookData = await getRelationshipBooks(3, startIndex, category !== 'all' ? category : undefined);
+      if (startIndex === 0) {
+        setBooks(bookData);
+      } else {
+        setBooks(prevBooks => [...prevBooks, ...bookData]);
+      }
+      setBookStartIndex(startIndex + 3);
+      if (bookData.length === 0) {
+        setHasMore(prev => ({ ...prev, books: false }));
+      }
     } catch (error) {
       console.error('Error fetching books:', error);
       toast({
@@ -102,56 +123,47 @@ const PhilosophyFeed = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(prev => ({ ...prev, books: false }));
+      setLoading(prev => ({ ...prev, books: false, moreBooks: false }));
+    }
+  };
+
+  const fetchQuotes = async () => {
+    setLoading(prev => ({ ...prev, quotes: quotes.length === 0, moreQuotes: quotes.length > 0 }));
+    try {
+      const newQuotes = getQuotes(
+        quoteCategory !== 'all' ? quoteCategory : undefined, 
+        quoteStartIndex, 
+        4
+      );
+      if (quoteStartIndex === 0) {
+        setQuotes(newQuotes);
+      } else {
+        setQuotes(prev => [...prev, ...newQuotes]);
+      }
+      setQuoteStartIndex(prev => prev + 4);
+      if (newQuotes.length === 0) {
+        setHasMore(prev => ({ ...prev, quotes: false }));
+      }
+    } catch (error) {
+      console.error('Error fetching quotes:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, quotes: false, moreQuotes: false }));
     }
   };
 
   const fetchMoreBooks = async () => {
     if (loading.moreBooks || !hasMore.books) return;
-    
-    setLoading(prev => ({ ...prev, moreBooks: true }));
-    try {
-      const newBooks = await getRelationshipBooks(3, bookStartIndex);
-      if (newBooks.length === 0) {
-        setHasMore(prev => ({ ...prev, books: false }));
-      } else {
-        setBooks(prevBooks => [...prevBooks, ...newBooks]);
-        setBookStartIndex(prevIndex => prevIndex + 3);
-      }
-    } catch (error) {
-      console.error('Error fetching more books:', error);
-      toast({
-        title: "Couldn't load more books",
-        description: "Please try again later",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, moreBooks: false }));
-    }
+    fetchBooks(bookStartIndex);
   };
 
   const fetchMoreSongs = async () => {
     if (loading.moreSongs || !hasMore.songs) return;
-    
-    setLoading(prev => ({ ...prev, moreSongs: true }));
-    try {
-      const newSongs = await getLoveSongs(5, songOffset);
-      if (newSongs.length === 0) {
-        setHasMore(prev => ({ ...prev, songs: false }));
-      } else {
-        setSongs(prevSongs => [...prevSongs, ...newSongs]);
-        setSongOffset(prevOffset => prevOffset + 5);
-      }
-    } catch (error) {
-      console.error('Error fetching more songs:', error);
-      toast({
-        title: "Couldn't load more songs",
-        description: "Please try again later",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, moreSongs: false }));
-    }
+    fetchSongs(songOffset);
+  };
+
+  const fetchMoreQuotes = async () => {
+    if (loading.moreQuotes || !hasMore.quotes) return;
+    fetchQuotes();
   };
 
   // Pause any playing audio when unmounting
@@ -161,12 +173,48 @@ const PhilosophyFeed = () => {
     };
   }, []);
 
-  const toggleSave = (id: number) => {
+  const toggleSaveQuote = (id: number) => {
     if (savedItems.includes(id)) {
       setSavedItems(savedItems.filter(itemId => itemId !== id));
+      toast({
+        title: "Quote unsaved",
+        description: "Quote removed from your saved items",
+      });
     } else {
       setSavedItems([...savedItems, id]);
+      toast({
+        title: "Quote saved",
+        description: "Quote added to your saved items",
+      });
     }
+  };
+
+  const toggleSaveBook = (id: string) => {
+    if (savedBooks.includes(id)) {
+      setSavedBooks(savedBooks.filter(bookId => bookId !== id));
+      toast({
+        title: "Book unsaved",
+        description: "Book removed from your saved items",
+      });
+    } else {
+      setSavedBooks([...savedBooks, id]);
+      toast({
+        title: "Book saved",
+        description: "Book added to your saved items",
+      });
+    }
+  };
+
+  const handleLikeQuote = (id: number) => {
+    setQuotes(prev => 
+      prev.map(quote => 
+        quote.id === id ? { ...quote, likes: quote.likes + 1 } : quote
+      )
+    );
+    toast({
+      title: "Quote liked",
+      description: "Your appreciation has been recorded",
+    });
   };
 
   const goToNextSong = () => {
@@ -213,6 +261,38 @@ const PhilosophyFeed = () => {
     });
   };
 
+  const handleShareQuote = (quote: QuoteType) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please sign in to share this quote.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    toast({
+      title: "Quote shared",
+      description: `Quote by ${quote.author} has been shared.`,
+    });
+  };
+
+  const handleShareBook = (book: BookInfo) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please sign in to share this book.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    toast({
+      title: "Book shared",
+      description: `"${book.title}" has been shared with your connections.`,
+    });
+  };
+
   const updateSongPlayingState = (playingIndex: number) => {
     setSongs(prevSongs => prevSongs.map((song, idx) => ({
       ...song,
@@ -228,9 +308,19 @@ const PhilosophyFeed = () => {
     if (currentSong.isPlaying) {
       pausePreview();
       updateSongPlayingState(-1);
-    } else {
+    } else if (currentSong.previewUrl) {
       playPreview(currentSong);
       updateSongPlayingState(currentSongIndex);
+      toast({
+        title: "Playing preview",
+        description: `Now playing "${currentSong.title}" by ${currentSong.artist}`,
+      });
+    } else {
+      toast({
+        title: "Preview unavailable",
+        description: "Sorry, no preview is available for this song",
+        variant: "destructive"
+      });
     }
   };
 
@@ -249,7 +339,7 @@ const PhilosophyFeed = () => {
     })
   };
 
-  // Intersection Observer for infinite loading
+  // Intersection Observers for infinite loading
   const bookObserverRef = useRef<IntersectionObserver | null>(null);
   const lastBookElementRef = useCallback((node: HTMLDivElement | null) => {
     if (loading.moreBooks) return;
@@ -262,9 +352,27 @@ const PhilosophyFeed = () => {
     });
     
     if (node) bookObserverRef.current.observe(node);
-  }, [loading.moreBooks, hasMore.books]);
+  }, [loading.moreBooks, hasMore.books, fetchMoreBooks]);
 
-  if (loading.songs && songs.length === 0) {
+  const quoteObserverRef = useRef<IntersectionObserver | null>(null);
+  const lastQuoteElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading.moreQuotes) return;
+    if (quoteObserverRef.current) quoteObserverRef.current.disconnect();
+    
+    quoteObserverRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore.quotes) {
+        fetchMoreQuotes();
+      }
+    });
+    
+    if (node) quoteObserverRef.current.observe(node);
+  }, [loading.moreQuotes, hasMore.quotes, fetchMoreQuotes]);
+
+  const handleSelectCategory = (category: string) => {
+    setSelectedCategory(category);
+  };
+
+  if (loading.songs && songs.length === 0 && loading.books && books.length === 0 && loading.quotes && quotes.length === 0) {
     return <div className="h-[500px] flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-love-medium"></div>
     </div>;
@@ -293,125 +401,222 @@ const PhilosophyFeed = () => {
         </TabsList>
         
         <TabsContent value="quotes" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            {quotes.map((quote) => (
-              <motion.div
-                key={quote.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+          {/* Quote Category Filter */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {quoteCategories.map((category) => (
+              <Badge
+                key={category}
+                variant={quoteCategory === category.toLowerCase() ? "default" : "outline"}
+                className={`cursor-pointer ${
+                  quoteCategory === category.toLowerCase() ? "bg-love-medium hover:bg-love-deep" : ""
+                }`}
+                onClick={() => setQuoteCategory(category.toLowerCase())}
               >
-                <Card className="h-full">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start">
-                      <Quote className="text-wisdom-medium mr-2 mt-1 h-4 w-4 flex-shrink-0" />
-                      <div>
-                        <p className="text-lg italic mb-2">{quote.text}</p>
-                        <p className="text-sm text-gray-600">— {quote.author}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2 flex justify-between">
-                    <span className="text-xs text-gray-500">{quote.category}</span>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Heart className="h-4 w-4 text-love-medium" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => toggleSave(quote.id)}
-                      >
-                        <Bookmark 
-                          className={`h-4 w-4 ${savedItems.includes(quote.id) ? 'text-wisdom-medium fill-wisdom-medium' : 'text-gray-500'}`} 
-                        />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Share2 className="h-4 w-4 text-gray-500" />
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </motion.div>
+                {category}
+              </Badge>
             ))}
           </div>
-        </TabsContent>
-        
-        <TabsContent value="books" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-3">
-            {loading.books && books.length === 0 ? (
-              <div className="col-span-3 flex justify-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-love-medium"></div>
-              </div>
-            ) : (
-              books.map((book, index) => (
+
+          {loading.quotes && quotes.length === 0 ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-love-medium"></div>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {quotes.map((quote, index) => (
                 <motion.div
-                  key={book.id}
+                  key={quote.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index % 3 * 0.1 }}
-                  ref={index === books.length - 1 ? lastBookElementRef : null}
+                  transition={{ duration: 0.3, delay: index % 2 * 0.1 }}
+                  ref={index === quotes.length - 1 ? lastQuoteElementRef : null}
                 >
-                  <Card className="h-full flex flex-col overflow-hidden">
-                    <div className="aspect-[2/3] overflow-hidden">
-                      <img 
-                        src={book.coverUrl} 
-                        alt={book.title} 
-                        className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
-                      />
-                    </div>
-                    <CardContent className="pt-4 flex-grow">
-                      <h3 className="font-medium text-lg">{book.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                      <p className="text-sm text-gray-700">{book.description}</p>
-                    </CardContent>
-                    <CardFooter className="pt-0 flex flex-col gap-2">
-                      <div className="flex justify-between w-full items-center">
-                        <span className="text-xs text-gray-500">{book.category}</span>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs font-medium">{book.rating}</span>
-                          <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                          </svg>
+                  <Card className="h-full">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start">
+                        <Quote className="text-wisdom-medium mr-2 mt-1 h-4 w-4 flex-shrink-0" />
+                        <div>
+                          <p className="text-lg italic mb-2">{quote.text}</p>
+                          <p className="text-sm text-gray-600">— {quote.author}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2 w-full">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => window.open(book.amazonUrl, '_blank')}
+                    </CardContent>
+                    <CardFooter className="pt-2 flex justify-between">
+                      <span className="text-xs text-gray-500">{quote.category}</span>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleLikeQuote(quote.id)}
                         >
-                          Buy on Amazon
+                          <Heart className="h-4 w-4 text-love-medium" />
+                          <span className="sr-only">Like</span>
                         </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => window.open(book.wattpadUrl, '_blank')}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => toggleSaveQuote(quote.id)}
                         >
-                          Read on Wattpad
+                          <Bookmark 
+                            className={`h-4 w-4 ${savedItems.includes(quote.id) ? 'text-wisdom-medium fill-wisdom-medium' : 'text-gray-500'}`} 
+                          />
+                          <span className="sr-only">Save</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleShareQuote(quote)}
+                        >
+                          <Share2 className="h-4 w-4 text-gray-500" />
+                          <span className="sr-only">Share</span>
                         </Button>
                       </div>
                     </CardFooter>
                   </Card>
                 </motion.div>
-              ))
-            )}
-          </div>
-          
-          {/* Loading indicator for more books */}
-          {loading.moreBooks && (
+              ))}
+            </div>
+          )}
+
+          {/* Loading indicator for more quotes */}
+          {loading.moreQuotes && (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-love-medium"></div>
             </div>
           )}
           
-          {/* No more books message */}
-          {!hasMore.books && books.length > 0 && (
+          {/* No more quotes message */}
+          {!hasMore.quotes && quotes.length > 0 && (
             <div className="text-center py-6 text-gray-500">
-              No more books to load
+              No more quotes to load
             </div>
           )}
+        </TabsContent>
+        
+        <TabsContent value="books" className="mt-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Sidebar */}
+            <div className="md:w-64 flex-shrink-0">
+              <BookSidebar 
+                onSelectCategory={handleSelectCategory} 
+                selectedCategory={selectedCategory}
+              />
+            </div>
+            
+            {/* Books grid */}
+            <div className="flex-1">
+              {loading.books && books.length === 0 ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-love-medium"></div>
+                </div>
+              ) : books.length === 0 && !loading.books ? (
+                <div className="text-center py-8 text-gray-500">
+                  No books found in this category
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {books.map((book, index) => (
+                    <motion.div
+                      key={book.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index % 3 * 0.1 }}
+                      ref={index === books.length - 1 ? lastBookElementRef : null}
+                    >
+                      <Card className="h-full flex flex-col overflow-hidden">
+                        <div className="aspect-[2/3] overflow-hidden">
+                          <img 
+                            src={book.coverUrl} 
+                            alt={book.title} 
+                            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                            onError={(e) => {
+                              // Fallback for broken image links
+                              (e.target as HTMLImageElement).src = '/placeholder.svg';
+                            }}
+                          />
+                        </div>
+                        <CardContent className="pt-4 flex-grow">
+                          <h3 className="font-medium text-lg">{book.title}</h3>
+                          <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
+                          <p className="text-sm text-gray-700">{book.description}</p>
+                        </CardContent>
+                        <CardFooter className="pt-0 flex flex-col gap-2">
+                          <div className="flex justify-between w-full items-center">
+                            <Badge variant="outline" className="text-xs">
+                              {book.category}
+                            </Badge>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs font-medium">{book.rating}</span>
+                              <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 w-full">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => window.open(book.amazonUrl, '_blank')}
+                            >
+                              Buy on Amazon
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => window.open(book.wattpadUrl, '_blank')}
+                            >
+                              Read Preview
+                            </Button>
+                          </div>
+                          <div className="flex justify-between mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-500 hover:text-love-medium"
+                              onClick={() => toggleSaveBook(book.id)}
+                            >
+                              <Bookmark className={`h-4 w-4 mr-1 ${
+                                savedBooks.includes(book.id) ? 'text-wisdom-medium fill-wisdom-medium' : ''
+                              }`} />
+                              Save
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-500 hover:text-love-medium"
+                              onClick={() => handleShareBook(book)}
+                            >
+                              <Share2 className="h-4 w-4 mr-1" />
+                              Share
+                            </Button>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Loading indicator for more books */}
+              {loading.moreBooks && (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-love-medium"></div>
+                </div>
+              )}
+              
+              {/* No more books message */}
+              {!hasMore.books && books.length > 0 && (
+                <div className="text-center py-6 text-gray-500">
+                  No more books to load
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
         
         <TabsContent value="songs" className="mt-6">
@@ -452,6 +657,10 @@ const PhilosophyFeed = () => {
                             src={songs[currentSongIndex].imageUrl} 
                             alt={songs[currentSongIndex].title}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback for broken image links
+                              (e.target as HTMLImageElement).src = '/placeholder.svg';
+                            }}
                           />
                         </div>
                       )}
@@ -532,6 +741,17 @@ const PhilosophyFeed = () => {
               All available songs loaded
             </div>
           )}
+
+          {/* Song playback instructions */}
+          <div className="text-center mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+            <h4 className="font-medium mb-2">How to enjoy the music:</h4>
+            <ol className="text-sm text-gray-600 text-left list-decimal pl-5 space-y-1">
+              <li>Click the "Play Preview" button to listen to a 30-second preview</li>
+              <li>If a song doesn't play, navigate to the next song using the arrow buttons</li>
+              <li>Use the "Send to Loved One" button to share favorite songs</li>
+              <li>For full songs, follow the links to music streaming services (coming soon)</li>
+            </ol>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
